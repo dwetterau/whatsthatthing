@@ -55,7 +55,6 @@ const getAirplaneMarkerSVG = (heading: number) => {
 }
 
 const getAirplaneMarkerIcon = (heading: number) => {
-    console.log(heading);
     return L.icon({
         iconUrl: getAirplaneMarkerSVG(heading),
         iconSize: [40, 40],
@@ -141,6 +140,9 @@ const InnerMap = ({
         }
         fetchPlaneData();
     }, [currentBounds])
+
+    // Fetch current boat locations with aisstream.io
+
 
 
     return <Fragment>
