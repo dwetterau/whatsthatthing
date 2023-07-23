@@ -1,4 +1,4 @@
-import { Fragment, useLayoutEffect } from "react"
+import { Fragment, useEffect, useLayoutEffect, useState } from "react"
 import { MapContainer, TileLayer, useMap } from "react-leaflet"
 
 const InnerMap = ({
@@ -23,7 +23,19 @@ const InnerMap = ({
 }
 
 export const MapWrapper = ({maxHeight}: {maxHeight: number}) => {
-    const center = {lat: 40.786900, lng: -73.950500};
+    const [center, setCenter] = useState<{lat: number, lng: number}>({lat: 40.786900, lng: -73.950500});
+
+    useEffect(() => {
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition((position) => {
+                console.log("Got current position!", position);
+                setCenter({
+                    lat: position.coords.latitude,
+                    lng: position.coords.longitude,
+                })
+            })
+        }
+    }, [])
 
     return <div style={{height: maxHeight, width: "100%"}}>
         <MapContainer 
