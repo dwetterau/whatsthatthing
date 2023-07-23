@@ -12,6 +12,7 @@
   "dependencies": {
     "@react-hook/resize-observer": "^1.2.6",
     "convex": "^1.0.2",
+    "http": "^0.0.1-security",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-leaflet": "^4.2.1"
