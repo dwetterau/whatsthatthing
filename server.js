@@ -4,6 +4,8 @@ import { fileURLToPath } from 'url'
 import express from 'express'
 import { createServer as createViteServer } from 'vite'
 
+import { setupWebsocketServer } from './websocketServer.js';
+
 // This is running a vite server in middleware mode, mostly so that we can connect to 3rd party services
 // on the server.
 
@@ -42,12 +44,10 @@ async function createServer() {
         // 6. Send the original? HTML back.
         res.status(200).set({ 'Content-Type': 'text/html' }).end(template)
     } catch (e) {
-        vite.ssrFixStacktrace(e);
         next(e)
     }
   })
-
-  
+  setupWebsocketServer();
 
   app.listen(5173)
 }
