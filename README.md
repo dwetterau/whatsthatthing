@@ -13,3 +13,15 @@ Ideas for types of "collectables" you might eventually be able to get:
 
 The idea is for it to work only where you currently are. 
 The concept is for this to be a thing you do when you're sitting on a rooftop in Manhattan, and wondering: "What's that thing?".
+
+
+## TODO:
+ [x] Fetch Airplane data
+ [x] Fetch Boat data
+ [ ] Lock down panning, and allow zoom in (but not out)
+ [ ] Fetch Airplane data server side, with periodic refresh (or realtime, if available)
+ [ ] Fetch more information about planes on click
+ [ ] Add user login for storing collectables
+ [ ] Implement first collectable
+ [ ] Fetch Amtrak / train data
+ [ ] Productionize?
