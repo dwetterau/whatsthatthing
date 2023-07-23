@@ -1,27 +1,15 @@
-# React + TypeScript + Vite
+# What's that thing?
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+This is a web app that shows current positions of nearby planes, trains, and boats (hopefully). 
+Over time, I want to turn this into a Swarm-type game experience where you can collect different types of vehicles with a simple experience for you and your friends.
 
-Currently, two official plugins are available:
+This concept really only works in places with lots of vehicles running about. That means places with busy ports or (someday) public transit should be the most fun to play in.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+Ideas for types of "collectables" you might eventually be able to get:
+- Vessel makes / models
+- Vessels at various speeds / altitudes
+- Vessels owned by various companies
+- Famous vessels?
 
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type aware lint rules:
-
-- Configure the top-level `parserOptions` property like this:
-
-```js
-   parserOptions: {
-    ecmaVersion: 'latest',
-    sourceType: 'module',
-    project: ['./tsconfig.json', './tsconfig.node.json'],
-    tsconfigRootDir: __dirname,
-   },
-```
-
-- Replace `plugin:@typescript-eslint/recommended` to `plugin:@typescript-eslint/recommended-type-checked` or `plugin:@typescript-eslint/strict-type-checked`
-- Optionally add `plugin:@typescript-eslint/stylistic-type-checked`
-- Install [eslint-plugin-react](https://github.com/jsx-eslint/eslint-plugin-react) and add `plugin:react/recommended` & `plugin:react/jsx-runtime` to the `extends` list
+The idea is for it to work only where you currently are. 
+The concept is for this to be a thing you do when you're sitting on a rooftop in Manhattan, and wondering: "What's that thing?".

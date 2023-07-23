@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useLayoutEffect, useState } from "react"
-import { MapContainer, Marker, TileLayer, useMap } from "react-leaflet"
+import { MapContainer, Marker, Popup, TileLayer, useMap } from "react-leaflet"
 import L from "leaflet";
 
 type Bounds = {
@@ -74,7 +74,7 @@ const InnerMap = ({
     const map = useMap();
     const [currentBounds, setCurrentBounds] = useState<Bounds | null>(null);
 
-    const [airplanePositions, setAirplanePositions] = useState<Array<AirplanePosition>>([]);
+    const [airplanePositions, setAirplanePositions] = useState<null | Array<AirplanePosition>>(null);
 
     // If the max height changes, make sure we reset the size.
     useLayoutEffect(() => {
@@ -100,6 +100,11 @@ const InnerMap = ({
         if (currentBounds === null) {
             return;
         }
+        // We only ever fetch plane data once to avoid rate limits.
+        if (airplanePositions !== null) {
+            return
+        }
+        
         const fetchPlaneData = async () => {
             const {minLat, maxLat, minLng, maxLng} = currentBounds;
             const params = new URLSearchParams();
@@ -111,7 +116,7 @@ const InnerMap = ({
             const data = await response.json();
 
             const newAirplanePositions: Array<AirplanePosition> = [];
-            for (const state of data.states) {
+            for (const state of data?.states ?? []) {
                 // See if there's data
                 let missingData = false;
                 for (let i = 0; i < 7; i++) {
@@ -132,7 +137,6 @@ const InnerMap = ({
                 })
             }
             setAirplanePositions(newAirplanePositions)
-
             // For the full data format, see: https://openskynetwork.github.io/opensky-api/rest.html#all-state-vectors
         }
         fetchPlaneData();
@@ -144,12 +148,19 @@ const InnerMap = ({
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright"/>OpenStreetMap</a> contributors'
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" 
         />
-        {airplanePositions.map((position) => (
+        {(airplanePositions ?? []).map((position) => (
             <Marker 
                 key={position.uniqueKey} 
                 position={[position.lat, position.lng]}
                 icon={getAirplaneMarkerIcon(position.heading)}
-            />
+            >
+                <Popup>
+                    <div>{position.callsign}</div>
+                    <div>Altitude: {(position.altitudeMeters * 3.28024).toFixed(2).toLocaleString()}ft</div>
+                    <div>Heading: {position.heading}°</div>
+                    <div>Speed: {(position.velocityMetersPerSecond * 2.23694).toFixed(2)}mph</div>
+                </Popup>
+            </Marker>
         ))}
     </Fragment>
 }
@@ -173,7 +184,7 @@ export const MapWrapper = ({maxHeight}: {maxHeight: number}) => {
         <MapContainer 
             style={{height: "100%", width: "100%"}} 
             center={[center.lat, center.lng]} 
-            zoom={10} 
+            zoom={12} 
             scrollWheelZoom={false}
         >
             <InnerMap center={center} maxHeight={maxHeight} />
