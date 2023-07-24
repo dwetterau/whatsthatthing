@@ -13,6 +13,7 @@ const getKeyForBounds = ({maxLat, minLat, maxLng, minLng}: Bounds): string => {
 
 class RegionFetcher {
     private key: string;
+    private bounds: Bounds;
     private refs: number;
     private lastAccessedTime: Date;
 
@@ -22,6 +23,7 @@ class RegionFetcher {
         messageIndex: number;
         ws: WebSocket | null;
     }> = [];
+    private openSkyIntervalId;
 
     public destroyed: boolean = false;
 
@@ -31,6 +33,7 @@ class RegionFetcher {
 
     constructor(bounds: Bounds) {
         this.key = getKeyForBounds(bounds);
+        this.bounds = bounds;
         this.refs = 0;
         this.lastAccessedTime = new Date();
         const {maxLat, minLat, maxLng, minLng} = bounds;
@@ -58,6 +61,22 @@ class RegionFetcher {
             this.broadcastMessage(this.messages.length - 1);
         });
         this.aisStreamConnection = aisStreamConnection;
+
+        const fetchOpenSky = async () => {
+            const params = new URLSearchParams();
+            params.set("lamin", minLat + "");
+            params.set("lamax", maxLat + "");
+            params.set("lomin", minLng + "");
+            params.set("lomax", maxLng + "");
+            
+            this.log("fetching OpenSky states...")
+            const response =  await fetch("https://opensky-network.org/api/states/all?" + params.toString());
+            const data = await response.json();
+            this.log("got OpenSky states.")
+            this.messages.push(JSON.stringify({t: 'OpenSky', msg: data?.states ?? []}))
+        }
+        fetchOpenSky();
+        this.openSkyIntervalId = setInterval(fetchOpenSky, 3*60*1000)
     }
 
     broadcastMessage(index: number) {
@@ -113,12 +132,13 @@ class RegionFetcher {
                 if (this.lastAccessedTime === lastRefRemovalTime) {
                     this.destroy();
                 }
-            }, 15 * 60 * 1000)
+            }, 2 * 60 * 1000)
         }
     }
 
     destroy() {
         this.aisStreamConnection?.close();
+        clearInterval(this.openSkyIntervalId);
         this.destroyed = true;
     }
 }

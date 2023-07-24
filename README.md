@@ -19,7 +19,7 @@ The concept is for this to be a thing you do when you're sitting on a rooftop in
 - [x] Fetch Airplane data
 - [x] Fetch Boat data
 - [x] Lock down panning, and allow zoom in (but not out)
-- [ ] Fetch Airplane data server side, with periodic refresh (or realtime, if available)
+- [x] Fetch Airplane data server side, with periodic refresh (or realtime, if available)
 - [ ] Fetch more information about planes on click
 - [ ] Add user login for storing collectables
 - [ ] Implement first collectable
