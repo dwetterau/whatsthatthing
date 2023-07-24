@@ -1,6 +1,5 @@
 import { Fragment, useEffect, useLayoutEffect, useMemo, useState } from "react"
 import { MapContainer, Marker, Popup, TileLayer, useMap } from "react-leaflet"
-import L from "leaflet";
 import { BoatMarkers } from "./boats";
 import { getIcon } from "./Marker";
 
