@@ -91,7 +91,6 @@ export const BoatMarkers = ({currentBounds}: {currentBounds: Bounds}) => {
 
     return <Fragment>
         {Array.from(boatPositions.entries()).map(([uniqueKey, position]) => {
-            console.log("boat position", boatPositions)
             const {lat, lng, shipName} = position;
             return <Marker key={uniqueKey} position={[lat, lng]} icon={getIcon(getBoatMarkerSVG())}>
                 <Popup>

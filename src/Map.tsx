@@ -178,7 +178,9 @@ export const MapWrapper = ({maxHeight}: {maxHeight: number}) => {
             style={{height: "100%", width: "100%"}} 
             center={[center.lat, center.lng]} 
             zoom={12} 
+            minZoom={12}
             scrollWheelZoom={false}
+            dragging={false}
         >
             <InnerMap center={center} maxHeight={maxHeight} />
         </MapContainer>
