@@ -161,6 +161,86 @@ export const usePositions = (currentBounds: Bounds | null) => {
     }
 }
 
+type Airport  = {
+    airport: string,
+    timezone: string,
+    iata: string,
+    icao: string,
+    terminal: string | null,
+    // A date
+    estimated: string,
+    gate: string,
+    scheduled: string,
+    delay: number | null
+}
+
+type FlightData = {
+    airline: {
+        name: string,
+        iata: string,
+        icao: string,
+    },
+    arrival: Airport,
+    departure: Airport;
+    flight: {
+        iata: string;
+        icao: string;
+        number: string;
+    }
+    // Format YYYY-MM-DD
+    flight_date: string;
+    flight_status: 'scheduled' | 'active' | 'diverted' | 'landed' | 'cancelled' | 'incident';
+}
+
+const FlightDataComponent = ({flightData}: {flightData: FlightData}) => {
+    return <div style={{marginTop: '1em'}}>
+        <div>Flight: {flightData.airline.name} {flightData.flight.number}</div>
+        <div>From: {flightData.departure.airport} ({flightData.departure.iata})</div>
+        <div>To: {flightData.arrival.airport} ({flightData.arrival.iata})</div>
+        <div>Status: {flightData.flight_status}</div>
+    </div>
+}
+
+const AirplanePopup = ({position}: {position: AirplanePosition}) => {
+    const [flightData, setFlightData] = useState<FlightData | null | false>(null);
+
+    useEffect(() => {
+        if ( flightData!== null) {
+            return
+        }
+
+        const abortController = new AbortController();
+
+        (async () => {
+            console.log("sending flight info request for", position)
+            try {
+                const response = await fetch(`/api/flightInfo?icao=${position.callsign.trim()}`, {signal: abortController.signal});
+                const data = await response.json();
+                if ((data.data ?? []).length > 0) {
+                    setFlightData(data.data[0])
+                } else {
+                    setFlightData(false);
+                }
+            } catch (e) {
+                console.log('request failed')
+            }
+        })();
+
+        return () => {
+            abortController.abort();
+        }
+    }, [])
+
+    return <Fragment>
+        <div>{position.callsign}</div>
+        <div>Altitude: {(position.altitudeMeters * 3.28024).toFixed(2).toLocaleString()}ft</div>
+        <div>Heading: {position.heading}°</div>
+        <div>Speed: {(position.velocityMetersPerSecond * 2.23694).toFixed(2)}mph</div>
+        {flightData === null ? 'Loading...' : flightData && <FlightDataComponent flightData={flightData} />}
+    </Fragment>
+
+}
+
 export const AirplaneMarkers = ({airplanePositions}: {airplanePositions: Map<String, AirplanePosition>}) => {
     return <Fragment>
         {Array.from(airplanePositions.entries()).map(([_, position]) => (
@@ -170,10 +250,7 @@ export const AirplaneMarkers = ({airplanePositions}: {airplanePositions: Map<Str
                 icon={getIcon(getAirplaneMarkerSVG(position.heading))}
             >
                 <Popup>
-                    <div>{position.callsign}</div>
-                    <div>Altitude: {(position.altitudeMeters * 3.28024).toFixed(2).toLocaleString()}ft</div>
-                    <div>Heading: {position.heading}°</div>
-                    <div>Speed: {(position.velocityMetersPerSecond * 2.23694).toFixed(2)}mph</div>
+                    <AirplanePopup position={position} />
                 </Popup>
             </Marker>
         ))}

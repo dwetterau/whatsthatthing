@@ -26,6 +26,51 @@ async function createServer() {
   // express router (express.Router()), you should use router.use
   app.use(vite.middlewares)
 
+  const flightInfoCache = new Map<string, any>();
+  app.use('/api/flightInfo', async (req, res) => {
+    if (req.method === 'GET') {
+      console.log("got request for /api/flightInfo", req.method, req.query);
+      const apiKey = process.env.AVIATION_STACK_API_KEY;
+      const {icao} = req.query;
+      if (typeof icao !== 'string') {
+          res.sendStatus(400);
+          return;
+      }
+      const query = icao.toUpperCase();
+      const getFlightData = async () => {
+        if (flightInfoCache.has(query)) {
+          const responseOrPending = flightInfoCache.get(query);
+
+          const sleep = (ms: number) => {
+            return new Promise(resolve => setTimeout(resolve, ms))
+          }
+          if (responseOrPending === 'pending') {
+            await sleep(200);
+            return await getFlightData();
+          } else {
+            console.log("returning cached request for query", query)
+            return responseOrPending;
+          }
+        }
+        flightInfoCache.set(query, 'pending');
+        try {
+          console.log("performing actual aviationstack request for query", query)
+          const response = await fetch(`http://api.aviationstack.com/v1/flights?access_key=${apiKey}&flight_icao=${query}`);
+          const data = await response.json();
+          flightInfoCache.set(query, data);
+        } catch (e) {
+          console.log("error querying for flight data", e.message);
+          flightInfoCache.set(query, 'error')
+        }
+        return flightInfoCache.get(query);
+      }
+
+      const data = await getFlightData();
+      res.setHeader('Content-Type', 'text/plain');
+      res.send(JSON.stringify(data));
+    }
+  })
+
   app.use('*', async (req, res, next) => {
     const url = req.originalUrl
     
