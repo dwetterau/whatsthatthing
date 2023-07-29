@@ -29,7 +29,7 @@ class RegionFetcher {
 
     private log(...any) {
         console.log("Fetcher: ", this.key, ...any)
-    }
+    } 
 
     constructor(bounds: Bounds) {
         this.key = getKeyForBounds(bounds);
@@ -57,8 +57,7 @@ class RegionFetcher {
             this.log('Error from AISStream:', error)
         });
         aisStreamConnection.on('message', (e) => {
-            this.messages.push(JSON.stringify({t: 'AISStream', msg: JSON.parse(e.toString())}));
-            this.broadcastMessage(this.messages.length - 1);
+            this.addAndBroadcastMessage({t: 'AISStream', msg: JSON.parse(e.toString())});
         });
         this.aisStreamConnection = aisStreamConnection;
 
@@ -72,14 +71,19 @@ class RegionFetcher {
             this.log("fetching OpenSky states...")
             const response =  await fetch("https://opensky-network.org/api/states/all?" + params.toString());
             const data = await response.json();
-            this.log("got OpenSky states.")
-            this.messages.push(JSON.stringify({t: 'OpenSky', msg: data?.states ?? []}))
+            this.addAndBroadcastMessage({t: 'OpenSky', msg: data?.states ?? []})
         }
         fetchOpenSky();
         this.openSkyIntervalId = setInterval(fetchOpenSky, 3*60*1000)
     }
 
-    broadcastMessage(index: number) {
+    private addAndBroadcastMessage(message: {t: 'AISStream' | 'OpenSky', msg: object}) {
+        this.log(`got ${message.t} message. Appending as message ${this.messages.length}`)
+        this.messages.push(JSON.stringify(message));
+        this.broadcastMessage(this.messages.length - 1);
+    }
+
+    private broadcastMessage(index: number) {
         let i = 0;
         this.log("broadcasting msgIndex", index)
         for (const {ws, messageIndex} of this.listeners) {
@@ -91,12 +95,14 @@ class RegionFetcher {
                     ws.send(this.messages[messageIndex])
                     this.listeners[j].messageIndex = messageIndex + 1;
                 }, 0)
+            } else if (ws) {
+                this.log("not broadcasting message", index, "to client", i, ". On messageIndex", messageIndex)
             }
             i++;
         }
     }
 
-    addRef(ws: WebSocket) {
+    public addRef(ws: WebSocket) {
         this.refs += 1;
         this.lastAccessedTime = new Date();
         const i = this.listeners.length;
@@ -118,7 +124,7 @@ class RegionFetcher {
         }, 0)
     }
 
-    removeRef(ws: WebSocket) {
+    public removeRef(ws: WebSocket) {
         this.refs -= 1;
         for (let i = 0; i < this.listeners.length; i++) {
             if (this.listeners[i].ws === ws) {
@@ -136,7 +142,7 @@ class RegionFetcher {
         }
     }
 
-    destroy() {
+    public destroy() {
         this.aisStreamConnection?.close();
         clearInterval(this.openSkyIntervalId);
         this.destroyed = true;

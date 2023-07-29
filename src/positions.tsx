@@ -1,7 +1,8 @@
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import type { Bounds } from "./Map";
 import { Marker, Popup } from "react-leaflet";
 import { getIcon } from "./Marker";
+import { debug } from "./logger";
 
 type AirplanePosition = {
     uniqueKey: string;
@@ -91,9 +92,9 @@ export const usePositions = (currentBounds: Bounds | null) => {
         const websocket = new WebSocket('ws://localhost:5174');
         websocket.onmessage = (e) => {
             const rawMsg = JSON.parse(e.data);
+            debug(`got ${rawMsg.t} message from server:`, rawMsg);
             switch (rawMsg.t) {
                 case 'START': {
-                    console.log('got message from server:', rawMsg);
                     if (rawMsg.msg === 'connection established') {
                         websocket!.send(JSON.stringify(currentBounds));     
                     }
@@ -146,7 +147,7 @@ export const usePositions = (currentBounds: Bounds | null) => {
                     break;
                 }
                 default:
-                    console.log("unknown message", rawMsg)
+                    console.error("unknown message", rawMsg)
             }
         }
         setHasWs(true);
@@ -212,7 +213,7 @@ const AirplanePopup = ({position}: {position: AirplanePosition}) => {
         const abortController = new AbortController();
 
         (async () => {
-            console.log("sending flight info request for", position)
+            debug("sending flight info request for", position)
             try {
                 const response = await fetch(`/api/flightInfo?icao=${position.callsign.trim()}`, {signal: abortController.signal});
                 const data = await response.json();
@@ -222,7 +223,7 @@ const AirplanePopup = ({position}: {position: AirplanePosition}) => {
                     setFlightData(false);
                 }
             } catch (e) {
-                console.log('request failed')
+                console.error('request failed', e)
             }
         })();
 
@@ -238,7 +239,6 @@ const AirplanePopup = ({position}: {position: AirplanePosition}) => {
         <div>Speed: {(position.velocityMetersPerSecond * 2.23694).toFixed(2)}mph</div>
         {flightData === null ? 'Loading...' : flightData && <FlightDataComponent flightData={flightData} />}
     </Fragment>
-
 }
 
 export const AirplaneMarkers = ({airplanePositions}: {airplanePositions: Map<String, AirplanePosition>}) => {

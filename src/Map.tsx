@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useLayoutEffect, useMemo, useState } from "react"
 import { MapContainer, TileLayer, useMap } from "react-leaflet"
 import { AirplaneMarkers, BoatMarkers, usePositions } from "./positions";
+import { debug } from "./logger";
 
 export type Bounds = {
     minLat: number;
@@ -28,7 +29,7 @@ const InnerMap = ({
         // to both the moveEnd and zoomEnd events (and probably also resize?)
         if (map !== null) {
             const bounds = map.getBounds();            
-            console.log("setting current bounds...", bounds.getSouth())
+            debug("setting current bounds...", bounds.getSouth())
             return {
                 minLat: bounds.getSouth(),
                 maxLat: bounds.getNorth(),
@@ -57,7 +58,7 @@ export const MapWrapper = ({maxHeight}: {maxHeight: number}) => {
     useEffect(() => {
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition((position) => {
-                console.log("Got current position!", position);
+                debug("Got current position!", position);
                 setCenter({
                     lat: position.coords.latitude,
                     lng: position.coords.longitude,
