@@ -86,20 +86,22 @@ class RegionFetcher {
     private broadcastMessage(index: number) {
         let i = 0;
         this.log("broadcasting msgIndex", index)
-        for (const {ws, messageIndex} of this.listeners) {
-            if (ws && index === messageIndex) {
-                // This listener is all the way caught up, try to send them the message
-                const j = i
-                setTimeout(() => {
-                    this.log("sending", messageIndex, "to", j)
-                    ws.send(this.messages[messageIndex])
-                    this.listeners[j].messageIndex = messageIndex + 1;
-                }, 0)
-            } else if (ws) {
-                this.log("not broadcasting message", index, "to client", i, ". On messageIndex", messageIndex)
-            }
-            i++;
+        for (let i = 0; i < this.listeners.length; i++) {
+            this.sendMessagesToClient(i);
         }
+    }
+    
+    private sendMessagesToClient(i: number) {
+        setTimeout(() => {
+            const ws = this.listeners[i].ws;
+            let messageIndex = this.listeners[i].messageIndex;
+            while (ws && messageIndex < this.messages.length) {
+                this.log("sending", messageIndex, "to", i)
+                ws.send(this.messages[messageIndex])
+                messageIndex++;
+                this.listeners[i].messageIndex = messageIndex;
+            }
+        }, 0)
     }
 
     public addRef(ws: WebSocket) {
@@ -110,18 +112,10 @@ class RegionFetcher {
             messageIndex: 0,
             ws,
         })
-        setTimeout(() => {
-            // Send all the messages we already have!
-            let messageIndex = this.listeners[i].messageIndex;
-            this.log("catching up client", i)
-            while (messageIndex < this.messages.length) {
-                this.log("sending", messageIndex, "to", i)
-                ws.send(this.messages[messageIndex])
-                messageIndex++;
-                this.listeners[i].messageIndex = messageIndex;
-            }
-            this.log("finished catching up", i)
-        }, 0)
+        // Send all the messages we already have!
+        this.log("catching up client", i)
+        this.sendMessagesToClient(i);
+        this.log("finished catching up", i)
     }
 
     public removeRef(ws: WebSocket) {

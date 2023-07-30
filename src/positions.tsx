@@ -206,7 +206,7 @@ const AirplanePopup = ({position}: {position: AirplanePosition}) => {
     const [flightData, setFlightData] = useState<FlightData | null | false>(null);
 
     useEffect(() => {
-        if ( flightData!== null) {
+        if (flightData !== null) {
             return
         }
 
