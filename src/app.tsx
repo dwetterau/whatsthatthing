@@ -1,12 +1,12 @@
 import { useLayoutEffect, useRef, useState } from 'react';
-import './App.css'
-import { MapWrapper } from './Map'
+import './app.css'
+import { MapWrapper } from './map'
 import useResizeObserver from '@react-hook/resize-observer';
-import { useQuery } from 'convex/react';
-import { api } from '../convex/_generated/api';
-import { Authentication } from './Authentication';
+import { Authentication } from './authentication';
+import { Authenticated } from 'convex/react';
+import { Achievements} from './achievements';
 
-const NAV_HEIGHT = 40;
+const NAV_HEIGHT = 45;
 
 export function App() {
     const containerRef = useRef<null | HTMLDivElement>(null);
@@ -33,7 +33,14 @@ export function App() {
                 display: "flex",
                 justifyContent: "space-between", 
             }}>
-                <div>What's that thing?</div>
+                <div style={{
+                    fontSize: 18,
+                    fontWeight: 700,
+                    padding: '0.5em',
+                }}>What's that thing?</div>
+                <Authenticated>
+                    <Achievements />
+                </Authenticated>
                 <Authentication />
             </nav>
             <MapWrapper maxHeight={containerHeight - NAV_HEIGHT} />

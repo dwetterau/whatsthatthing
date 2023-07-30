@@ -1,4 +1,23 @@
-import {mutation} from "./_generated/server";
+import { Id } from "./_generated/dataModel";
+import {MutationCtx, QueryCtx, mutation} from "./_generated/server";
+
+export const getLoggedInUserIdOrError = async (ctx: QueryCtx | MutationCtx): Promise<Id<'users'>> => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+        throw new Error("called user_achievements.add without authentication present");
+    }
+    const user = await ctx.db
+        .query("users")
+        .withIndex("by_token", (q) => (
+            q.eq("tokenIdentifier", identity.tokenIdentifier)
+        ))
+        .unique();
+        
+    if (user === null) {
+        throw new Error("user not stored in database");
+    }
+    return user._id;
+}
 
 export const store = mutation({
     args: {},

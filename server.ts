@@ -38,6 +38,7 @@ async function createServer() {
       }
       const query = icao.toUpperCase();
       const getFlightData = async () => {
+        const start = new Date().getTime()
         if (flightInfoCache.has(query)) {
           const responseOrPending = flightInfoCache.get(query);
 
@@ -48,7 +49,7 @@ async function createServer() {
             await sleep(200);
             return await getFlightData();
           } else {
-            console.log("returning cached request for query", query)
+            console.log("returning cached request for query", query, `duration: ${new Date().getTime() - start}ms`)
             return responseOrPending;
           }
         }
@@ -62,6 +63,7 @@ async function createServer() {
           console.log("error querying for flight data", e.message);
           flightInfoCache.set(query, 'error')
         }
+        console.log(`got response from aviationstack. duration: ${new Date().getTime() - start}ms`)
         return flightInfoCache.get(query);
       }
 

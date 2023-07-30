@@ -1,11 +1,11 @@
 import { Fragment, useEffect, useState } from "react";
-import type { Bounds } from "./Map";
+import type { Bounds } from "./map";
 import { Marker, Popup } from "react-leaflet";
-import { getIcon } from "./Marker";
+import { getIcon } from "./marker";
 import { debug } from "./logger";
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { api } from "../convex/_generated/api";
-import { Doc, Id } from "../convex/_generated/dataModel";
+import { Id } from "../convex/_generated/dataModel";
 
 type AirplanePosition = {
     uniqueKey: string;

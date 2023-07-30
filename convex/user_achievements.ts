@@ -1,27 +1,45 @@
-import { Id } from "./_generated/dataModel";
-import {mutation} from "./_generated/server";
+import { Doc, Id } from "./_generated/dataModel";
+import {mutation, query} from "./_generated/server";
 import {v} from "convex/values";
+import { getLoggedInUserIdOrError } from "./users";
+
+export const list = query({
+    args: {},
+    handler: async (ctx): Promise<Array<Doc<'userAchievements'> & {achievement: Doc<'achievements'>}>> => {
+        const userId = await getLoggedInUserIdOrError(ctx);
+        const userAchievements = await ctx.db
+            .query("userAchievements")
+            .withIndex("by_user", (q) => {
+                return q.eq("userId", userId)
+            })
+            .order("desc")
+            .collect();
+        const possiblyMissingAchievements = await Promise.all(
+            userAchievements.map((userAchievement) => {
+                return ctx.db.get(userAchievement.achievementId); 
+            })
+        );
+        const final: Array<Doc<'userAchievements'> & {achievement: Doc<'achievements'>}> = [];
+        for (let i = 0; i < userAchievements.length; i++) {
+            const achievement = possiblyMissingAchievements[i];
+            if (!achievement) {
+                continue;
+            }
+            final.push({
+                ...userAchievements[i],
+                achievement,
+            })
+        }
+        return final;
+    }
+})
 
 export const add = mutation({
     args: {
         achievementId: v.id("achievements"),
     },
     handler: async (ctx, args): Promise<Id<'userAchievements'>> => {
-        const identity = await ctx.auth.getUserIdentity();
-        if (!identity) {
-            throw new Error("called user_achievements.add without authentication present");
-        }
-        const user = await ctx.db
-            .query("users")
-            .withIndex("by_token", (q) => (
-                q.eq("tokenIdentifier", identity.tokenIdentifier)
-            ))
-            .unique();
-        
-        if (user === null) {
-            throw new Error("user not stored in database");
-        }
-
+        const userId = await getLoggedInUserIdOrError(ctx);
         // Check that the achievement exists
         const achievement = await ctx.db.get(args.achievementId);
         if (achievement === null) {
@@ -32,7 +50,7 @@ export const add = mutation({
         const userAchievement = await ctx.db
             .query("userAchievements")
             .withIndex("by_user", (q) => {
-                return q.eq("userId", user._id)
+                return q.eq("userId", userId)
             })
             .filter(q => {
                 return q.eq(q.field("achievementId"), args.achievementId)
@@ -41,7 +59,7 @@ export const add = mutation({
 
         if (userAchievement === null) {
             return await ctx.db.insert("userAchievements", {
-                userId: user._id,
+                userId: userId,
                 achievementId: args.achievementId,
             })
         }
