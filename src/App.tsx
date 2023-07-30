@@ -4,10 +4,11 @@ import { MapWrapper } from './Map'
 import useResizeObserver from '@react-hook/resize-observer';
 import { useQuery } from 'convex/react';
 import { api } from '../convex/_generated/api';
+import { Authentication } from './Authentication';
 
-const NAV_HEIGHT = 20;
+const NAV_HEIGHT = 40;
 
-function App() {
+export function App() {
     const containerRef = useRef<null | HTMLDivElement>(null);
     const [containerHeight, setContainerHeight] = useState<number>(300);
 
@@ -29,10 +30,16 @@ function App() {
 
     return (
         <div style={{height: "100%"}} ref={containerRef}>
-            <nav style={{height: NAV_HEIGHT, width: "100vw"}}><div>What's that thing?</div></nav>
+            <nav style={{
+                height: NAV_HEIGHT, 
+                width: "100vw",
+                display: "flex",
+                justifyContent: "space-between", 
+            }}>
+                <div>What's that thing?</div>
+                <Authentication />
+            </nav>
             <MapWrapper maxHeight={containerHeight - NAV_HEIGHT} />
         </div>
     )
 }
-
-export default App

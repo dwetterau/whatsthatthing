@@ -11,6 +11,7 @@ export default defineConfig({
     open: '/index.html',
   },
   resolve: {
+    // https://medium.com/@ftaioli/using-node-js-builtin-modules-with-vite-6194737c2cd2
     alias: {
       http: 'rollup-plugin-node-polyfills/polyfills/http',
       https: 'rollup-plugin-node-polyfills/polyfills/http',
