@@ -2,6 +2,8 @@ import { useLayoutEffect, useRef, useState } from 'react';
 import './App.css'
 import { MapWrapper } from './Map'
 import useResizeObserver from '@react-hook/resize-observer';
+import { useQuery } from 'convex/react';
+import { api } from '../convex/_generated/api';
 
 const NAV_HEIGHT = 20;
 
@@ -21,6 +23,9 @@ function App() {
       const {height} = entry.contentRect;
       setContainerHeight(height);
     })
+
+    const achievements = useQuery(api.achievements.get);
+    console.log("Loaded achievements", achievements);
 
     return (
         <div style={{height: "100%"}} ref={containerRef}>

@@ -4,3 +4,4 @@ node_modules
 # Files that are outputted by TS
 websocketServer.js
 server.js
+.env.local
