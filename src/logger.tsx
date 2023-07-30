@@ -4,5 +4,5 @@ export function debug(...args: any) {
     if (!isDebugEnabled) {
         return;
     }
-    console.log(...args)
+    console.log(...args);
 }

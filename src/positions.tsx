@@ -17,10 +17,12 @@ type AirplanePosition = {
     // In decimal degrees from north.
     heading: number;
     velocityMetersPerSecond: number;
-}
+};
 
 const getAirplaneMarkerSVG = (heading: number) => {
-    return `data:image/svg+xml;utf8,${encodeURIComponent(`<svg fill="#db373f" style="transform:rotate(${heading + 90}deg)" height="40px" width="40px" version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" 
+    return `data:image/svg+xml;utf8,${encodeURIComponent(`<svg fill="#db373f" style="transform:rotate(${
+        heading + 90
+    }deg)" height="40px" width="40px" version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" 
 	 viewBox="0 0 512.004 512.004" xml:space="preserve">
 <g>
 	<g>
@@ -49,8 +51,8 @@ const getAirplaneMarkerSVG = (heading: number) => {
 			c4.714,0,8.539,3.826,8.539,8.539C349.753,247.906,345.927,251.732,341.213,251.732z"/>
 	</g>
 </g>
-</svg>`)}`
-}
+</svg>`)}`;
+};
 
 type BoatPosition = {
     uniqueKey: string;
@@ -58,7 +60,7 @@ type BoatPosition = {
     lat: number;
     lng: number;
     time: Date;
-}
+};
 
 const getBoatMarkerSVG = () => {
     return `data:image/svg+xml;utf8,${encodeURIComponent(`<?xml version="1.0" encoding="iso-8859-1"?>
@@ -76,13 +78,17 @@ const getBoatMarkerSVG = () => {
 			h0.1c53.2-0.6,102.6-10.7,154.8-21.4c18.5-3.8,37.5-7.7,57.5-11.3L405.038,419.013z"/>
 	</g>
 </g>
-</svg>`)}`
-}
+</svg>`)}`;
+};
 
 export const usePositions = (currentBounds: Bounds | null) => {
     const [hasWs, setHasWs] = useState<boolean>(false);
-    const [boatPositions, setBoatPositions] = useState<Map<string, BoatPosition>>(new Map());
-    const [airplanePositions, setAirplanePositions] = useState<Map<string, AirplanePosition>>(new Map());
+    const [boatPositions, setBoatPositions] = useState<
+        Map<string, BoatPosition>
+    >(new Map());
+    const [airplanePositions, setAirplanePositions] = useState<
+        Map<string, AirplanePosition>
+    >(new Map());
 
     useEffect(() => {
         if (currentBounds === null) {
@@ -92,24 +98,27 @@ export const usePositions = (currentBounds: Bounds | null) => {
             return;
         }
         // TODO: Set the domain somewhere centrally
-        const websocket = new WebSocket('ws://localhost:5174');
+        const websocket = new WebSocket("ws://localhost:5174");
         websocket.onmessage = (e) => {
             const rawMsg = JSON.parse(e.data);
             debug(`got ${rawMsg.t} message from server:`, rawMsg);
             switch (rawMsg.t) {
-                case 'START': {
-                    if (rawMsg.msg === 'connection established') {
-                        websocket!.send(JSON.stringify(currentBounds));     
+                case "START": {
+                    if (rawMsg.msg === "connection established") {
+                        websocket!.send(JSON.stringify(currentBounds));
                     }
-                    break
+                    break;
                 }
-                case 'AISStream': {                        
+                case "AISStream": {
                     // TODO: Get heading information too...
-                    if (rawMsg.msg.MessageType === 'PositionReport') {
-                        const {MMSI, ShipName, latitude, longitude} = rawMsg.msg.MetaData;
+                    if (rawMsg.msg.MessageType === "PositionReport") {
+                        const { MMSI, ShipName, latitude, longitude } =
+                            rawMsg.msg.MetaData;
                         if (MMSI) {
                             setBoatPositions((currentBoatPositions) => {
-                                const newBoatPositions = new Map(currentBoatPositions.entries());
+                                const newBoatPositions = new Map(
+                                    currentBoatPositions.entries(),
+                                );
                                 newBoatPositions.set(MMSI, {
                                     uniqueKey: MMSI,
                                     shipName: ShipName,
@@ -118,13 +127,16 @@ export const usePositions = (currentBounds: Bounds | null) => {
                                     time: new Date(),
                                 });
                                 return newBoatPositions;
-                            })
+                            });
                         }
                     }
                     break;
                 }
-                case 'OpenSky': {
-                    const newAirplanePositions = new Map<string, AirplanePosition>();
+                case "OpenSky": {
+                    const newAirplanePositions = new Map<
+                        string,
+                        AirplanePosition
+                    >();
                     for (const state of rawMsg.msg) {
                         // See if there's data
                         let missingData = false;
@@ -132,7 +144,7 @@ export const usePositions = (currentBounds: Bounds | null) => {
                             missingData ||= !state[i];
                         }
                         if (missingData) {
-                            continue
+                            continue;
                         }
                         // For the full data format, see: https://openskynetwork.github.io/opensky-api/rest.html#all-state-vectors
                         newAirplanePositions.set(state[0], {
@@ -144,63 +156,70 @@ export const usePositions = (currentBounds: Bounds | null) => {
                             altitudeMeters: state[7],
                             heading: state[10],
                             velocityMetersPerSecond: state[9],
-                        })
+                        });
                     }
                     setAirplanePositions(newAirplanePositions);
                     break;
                 }
                 default:
-                    console.error("unknown message", rawMsg)
+                    console.error("unknown message", rawMsg);
             }
-        }
+        };
         setHasWs(true);
         return () => {
-            websocket.close(1000, "component unmounted")
-        }
+            websocket.close(1000, "component unmounted");
+        };
     }, [currentBounds]);
-    
+
     return {
         boatPositions,
         airplanePositions,
-    }
-}
+    };
+};
 
-type Airport  = {
-    airport: string,
-    timezone: string,
-    iata: string,
-    icao: string,
-    terminal: string | null,
+type Airport = {
+    airport: string;
+    timezone: string;
+    iata: string;
+    icao: string;
+    terminal: string | null;
     // A date
-    estimated: string,
-    gate: string,
-    scheduled: string,
-    delay: number | null
-}
+    estimated: string;
+    gate: string;
+    scheduled: string;
+    delay: number | null;
+};
 
 type FlightData = {
     airline: {
-        name: string,
-        iata: string,
-        icao: string,
-    },
-    arrival: Airport,
+        name: string;
+        iata: string;
+        icao: string;
+    };
+    arrival: Airport;
     departure: Airport;
     flight: {
         iata: string;
         icao: string;
         number: string;
-    }
+    };
     // Format YYYY-MM-DD
     flight_date: string;
-    flight_status: 'scheduled' | 'active' | 'diverted' | 'landed' | 'cancelled' | 'incident';
-}
+    flight_status:
+        | "scheduled"
+        | "active"
+        | "diverted"
+        | "landed"
+        | "cancelled"
+        | "incident";
+};
 
 const useEarnAchievement = async (flightData: FlightData | null | false) => {
-    const {isAuthenticated} = useConvexAuth();
+    const { isAuthenticated } = useConvexAuth();
     const achievements = useQuery(api.achievements.get);
     const addAchievement = useMutation(api.user_achievements.add);
-    const [userAchievementId, setUserAchievementId] = useState<Id<'userAchievements'> | null>(null);
+    const [userAchievementId, setUserAchievementId] =
+        useState<Id<"userAchievements"> | null>(null);
 
     useEffect(() => {
         if (!isAuthenticated || !flightData) {
@@ -210,40 +229,58 @@ const useEarnAchievement = async (flightData: FlightData | null | false) => {
             for (const achievement of achievements ?? []) {
                 if (achievement.name === flightData.airline.name) {
                     console.log("Recording achievement:", achievement);
-                    setUserAchievementId(await addAchievement({achievementId: achievement._id}));
+                    setUserAchievementId(
+                        await addAchievement({
+                            achievementId: achievement._id,
+                        }),
+                    );
                 }
             }
-        }
+        };
         earn();
     }, [isAuthenticated, flightData, userAchievementId]);
 
     return userAchievementId;
-}
+};
 
-const FlightDataComponent = ({flightData}: {flightData: FlightData}) => {
-    return <div style={{marginTop: '1em'}}>
-        <div>Flight: {flightData.airline.name} {flightData.flight.number}</div>
-        <div>From: {flightData.departure.airport} ({flightData.departure.iata})</div>
-        <div>To: {flightData.arrival.airport} ({flightData.arrival.iata})</div>
-        <div>Status: {flightData.flight_status}</div>
-    </div>
-}
+const FlightDataComponent = ({ flightData }: { flightData: FlightData }) => {
+    return (
+        <div style={{ marginTop: "1em" }}>
+            <div>
+                Flight: {flightData.airline.name} {flightData.flight.number}
+            </div>
+            <div>
+                From: {flightData.departure.airport} (
+                {flightData.departure.iata})
+            </div>
+            <div>
+                To: {flightData.arrival.airport} ({flightData.arrival.iata})
+            </div>
+            <div>Status: {flightData.flight_status}</div>
+        </div>
+    );
+};
 
-const AirplanePopup = ({position}: {position: AirplanePosition}) => {
-    const [flightData, setFlightData] = useState<FlightData | null | false>(null);
+const AirplanePopup = ({ position }: { position: AirplanePosition }) => {
+    const [flightData, setFlightData] = useState<FlightData | null | false>(
+        null,
+    );
     useEarnAchievement(flightData);
 
     useEffect(() => {
         if (flightData !== null) {
-            return
+            return;
         }
 
         const abortController = new AbortController();
 
         (async () => {
-            debug("sending flight info request for", position)
+            debug("sending flight info request for", position);
             try {
-                const response = await fetch(`/api/flightInfo?icao=${position.callsign.trim()}`, {signal: abortController.signal});
+                const response = await fetch(
+                    `/api/flightInfo?icao=${position.callsign.trim()}`,
+                    { signal: abortController.signal },
+                );
                 const data = await response.json();
                 if ((data.data ?? []).length > 0) {
                     const flightData = data.data[0];
@@ -252,51 +289,82 @@ const AirplanePopup = ({position}: {position: AirplanePosition}) => {
                     setFlightData(false);
                 }
             } catch (e) {
-                console.error('request failed', e)
+                console.error("request failed", e);
             }
         })();
 
         return () => {
             abortController.abort();
-        }
-    }, [])
+        };
+    }, []);
 
-    return <Fragment>
-        <div>{position.callsign}</div>
-        <div>Altitude: {(position.altitudeMeters * 3.28024).toFixed(2).toLocaleString()}ft</div>
-        <div>Heading: {position.heading}°</div>
-        <div>Speed: {(position.velocityMetersPerSecond * 2.23694).toFixed(2)}mph</div>
-        {flightData === null ? 'Loading...' : flightData && <FlightDataComponent flightData={flightData} />}
-    </Fragment>
-}
+    return (
+        <Fragment>
+            <div>{position.callsign}</div>
+            <div>
+                Altitude:{" "}
+                {(position.altitudeMeters * 3.28024)
+                    .toFixed(2)
+                    .toLocaleString()}
+                ft
+            </div>
+            <div>Heading: {position.heading}°</div>
+            <div>
+                Speed: {(position.velocityMetersPerSecond * 2.23694).toFixed(2)}
+                mph
+            </div>
+            {flightData === null
+                ? "Loading..."
+                : flightData && <FlightDataComponent flightData={flightData} />}
+        </Fragment>
+    );
+};
 
-export const AirplaneMarkers = ({airplanePositions}: {airplanePositions: Map<String, AirplanePosition>}) => {
-    return <Fragment>
-        {Array.from(airplanePositions.entries()).map(([_, position]) => (
-            <Marker 
-                key={position.uniqueKey} 
-                position={[position.lat, position.lng]}
-                icon={getIcon(getAirplaneMarkerSVG(position.heading))}
-            >
-                <Popup>
-                    <AirplanePopup position={position} />
-                </Popup>
-            </Marker>
-        ))}
+export const AirplaneMarkers = ({
+    airplanePositions,
+}: {
+    airplanePositions: Map<String, AirplanePosition>;
+}) => {
+    return (
+        <Fragment>
+            {Array.from(airplanePositions.entries()).map(([_, position]) => (
+                <Marker
+                    key={position.uniqueKey}
+                    position={[position.lat, position.lng]}
+                    icon={getIcon(getAirplaneMarkerSVG(position.heading))}
+                >
+                    <Popup>
+                        <AirplanePopup position={position} />
+                    </Popup>
+                </Marker>
+            ))}
+        </Fragment>
+    );
+};
 
-    </Fragment>
-}
-
-export const BoatMarkers = ({boatPositions}: {boatPositions: Map<string, BoatPosition>}) => {
-    return <Fragment>        
-        {Array.from(boatPositions.entries()).map(([uniqueKey, position]) => {
-            const {lat, lng, shipName} = position;
-            return <Marker key={uniqueKey} position={[lat, lng]} icon={getIcon(getBoatMarkerSVG())}>
-                <Popup>
-                    <div>{shipName}</div>
-                </Popup>
-            </Marker>
-        })}
-
-    </Fragment>
-}
+export const BoatMarkers = ({
+    boatPositions,
+}: {
+    boatPositions: Map<string, BoatPosition>;
+}) => {
+    return (
+        <Fragment>
+            {Array.from(boatPositions.entries()).map(
+                ([uniqueKey, position]) => {
+                    const { lat, lng, shipName } = position;
+                    return (
+                        <Marker
+                            key={uniqueKey}
+                            position={[lat, lng]}
+                            icon={getIcon(getBoatMarkerSVG())}
+                        >
+                            <Popup>
+                                <div>{shipName}</div>
+                            </Popup>
+                        </Marker>
+                    );
+                },
+            )}
+        </Fragment>
+    );
+};
