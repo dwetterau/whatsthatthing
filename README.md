@@ -21,8 +21,8 @@ The concept is for this to be a thing you do when you're sitting on a rooftop in
 - [x] Lock down panning, and allow zoom in (but not out)
 - [x] Fetch Airplane data server side, with periodic refresh (or realtime, if available)
 - [x] Fetch more information about planes on click
-- [ ] Add user login for storing collectables
-- [ ] Implement first collectable
+- [x] Add user login for storing collectables
+- [x] Implement first collectable
 - [ ] Fetch Amtrak / train data
 - [ ] Productionize?
  
@@ -30,4 +30,4 @@ The concept is for this to be a thing you do when you're sitting on a rooftop in
  ### Improvements:
  - [x] Sometimes the client isn't getting or applying updates that the server is supposedly getting.
  - [ ] Hardcode or round regions so that we re-use them more often (or don't allow too many)
- - [ ] Setup eslint to automatically reformat on save (remove newlines, etc.)
+ - [x] Setup eslint to automatically reformat on save (remove newlines, etc.)
