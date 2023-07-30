@@ -25,9 +25,6 @@ export function App() {
       setContainerHeight(height);
     })
 
-    const achievements = useQuery(api.achievements.get);
-    console.log("Loaded achievements", achievements);
-
     return (
         <div style={{height: "100%"}} ref={containerRef}>
             <nav style={{

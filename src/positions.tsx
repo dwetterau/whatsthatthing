@@ -3,6 +3,9 @@ import type { Bounds } from "./Map";
 import { Marker, Popup } from "react-leaflet";
 import { getIcon } from "./Marker";
 import { debug } from "./logger";
+import { useConvexAuth, useMutation, useQuery } from "convex/react";
+import { api } from "../convex/_generated/api";
+import { Doc, Id } from "../convex/_generated/dataModel";
 
 type AirplanePosition = {
     uniqueKey: string;
@@ -193,6 +196,30 @@ type FlightData = {
     flight_status: 'scheduled' | 'active' | 'diverted' | 'landed' | 'cancelled' | 'incident';
 }
 
+const useEarnAchievement = async (flightData: FlightData | null | false) => {
+    const {isAuthenticated} = useConvexAuth();
+    const achievements = useQuery(api.achievements.get);
+    const addAchievement = useMutation(api.user_achievements.add);
+    const [userAchievementId, setUserAchievementId] = useState<Id<'userAchievements'> | null>(null);
+
+    useEffect(() => {
+        if (!isAuthenticated || !flightData) {
+            return;
+        }
+        const earn = async () => {
+            for (const achievement of achievements ?? []) {
+                if (achievement.name === flightData.airline.name) {
+                    console.log("Recording achievement:", achievement);
+                    setUserAchievementId(await addAchievement({achievementId: achievement._id}));
+                }
+            }
+        }
+        earn();
+    }, [isAuthenticated, flightData, userAchievementId]);
+
+    return userAchievementId;
+}
+
 const FlightDataComponent = ({flightData}: {flightData: FlightData}) => {
     return <div style={{marginTop: '1em'}}>
         <div>Flight: {flightData.airline.name} {flightData.flight.number}</div>
@@ -204,6 +231,7 @@ const FlightDataComponent = ({flightData}: {flightData: FlightData}) => {
 
 const AirplanePopup = ({position}: {position: AirplanePosition}) => {
     const [flightData, setFlightData] = useState<FlightData | null | false>(null);
+    useEarnAchievement(flightData);
 
     useEffect(() => {
         if (flightData !== null) {
@@ -218,7 +246,8 @@ const AirplanePopup = ({position}: {position: AirplanePosition}) => {
                 const response = await fetch(`/api/flightInfo?icao=${position.callsign.trim()}`, {signal: abortController.signal});
                 const data = await response.json();
                 if ((data.data ?? []).length > 0) {
-                    setFlightData(data.data[0])
+                    const flightData = data.data[0];
+                    setFlightData(flightData);
                 } else {
                     setFlightData(false);
                 }

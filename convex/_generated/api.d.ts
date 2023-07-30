@@ -15,6 +15,7 @@ import type {
   FunctionReference,
 } from "convex/server";
 import type * as achievements from "../achievements";
+import type * as user_achievements from "../user_achievements";
 import type * as users from "../users";
 
 /**
@@ -27,6 +28,7 @@ import type * as users from "../users";
  */
 declare const fullApi: ApiFromModules<{
   achievements: typeof achievements;
+  user_achievements: typeof user_achievements;
   users: typeof users;
 }>;
 export declare const api: FilterApi<

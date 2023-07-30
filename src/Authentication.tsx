@@ -12,7 +12,7 @@ const useStoreUserEffect = () => {
     const storeUser = useMutation(api.users.store);
     
     useEffect(() => {
-        if (!isAuthenticated || userId !== null) {
+        if (!isAuthenticated) {
             return;
         }
         async function createUser() {
@@ -29,7 +29,7 @@ const useStoreUserEffect = () => {
 export const Authentication = () => {
     const {isLoading, isAuthenticated} = useConvexAuth();
     const {user, loginWithRedirect, logout} = useAuth0();
-    const userId = useStoreUserEffect();
+    useStoreUserEffect();
     
     if (isLoading) {
         return <span>Loading...</span>
@@ -40,7 +40,7 @@ export const Authentication = () => {
     if (user) {
         return (
             <div>
-            <span>Logged in as {user.name} ({userId})</span>
+            <span>Logged in as {user.name}</span>
             <span style={{marginLeft: '1em'}}>
                     <button onClick={() => logout({logoutParams: {returnTo: window.location.origin}})}>
                         Log out
