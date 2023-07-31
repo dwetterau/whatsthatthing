@@ -5,6 +5,6 @@ export const getIcon = (svgUrl: string) => {
         iconUrl: svgUrl,
         iconSize: [40, 40],
         iconAnchor: [20, 20],
-        popupAnchor: [0, 0],
+        popupAnchor: [0, -15],
     });
 };

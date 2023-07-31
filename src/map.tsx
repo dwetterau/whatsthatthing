@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useLayoutEffect, useMemo, useState } from "react";
-import { MapContainer, TileLayer, useMap } from "react-leaflet";
+import { MapContainer, TileLayer, useMapEvents } from "react-leaflet";
 import {
     AirplaneMarkers,
     BoatMarkers,
@@ -22,31 +22,31 @@ const InnerMap = ({
     center: { lat: number; lng: number };
     maxHeight: number;
 }) => {
-    const map = useMap();
+    const [bounds, setBounds] = useState<Bounds | null>(null);
+    const map = useMapEvents({
+        click(e) {
+            console.log("clicked at:", e.latlng, "in bounds?");
+        },
+    });
 
     // If the max height changes, make sure we reset the size.
     useLayoutEffect(() => {
         map?.invalidateSize();
-    }, [map, maxHeight]);
-
-    const currentBounds = useMemo(() => {
-        // TODO: If I want to also update these when panning around, I need to call `useMapEvents` and listen
-        // to both the moveEnd and zoomEnd events (and probably also resize?)
-        if (map !== null) {
+        if (map) {
+            // TODO: If I want to also update these when panning around, I need to call `useMapEvents` and listen
+            // to both the moveEnd and zoomEnd events (and probably also resize?)
             const bounds = map.getBounds();
-            debug("setting current bounds...", bounds.getSouth());
-            return {
+            setBounds({
                 minLat: bounds.getSouth(),
                 maxLat: bounds.getNorth(),
                 minLng: bounds.getWest(),
                 maxLng: bounds.getEast(),
-            };
+            });
         }
-        return null;
-    }, [map]);
+    }, [map, maxHeight]);
 
     const { boatPositions, trainPositions, airplanePositions } =
-        usePositions(currentBounds);
+        usePositions(bounds);
 
     return (
         <Fragment>

@@ -106,13 +106,33 @@ type TrainPosition = {
     stations: Array<TrainStation>;
 };
 
-const nextStation = (position: TrainPosition): TrainStation | null => {
+const computeStations = (
+    position: TrainPosition,
+): {
+    nextStation: TrainStation | null;
+    previousStation: TrainStation | null;
+    firstStation: TrainStation | null;
+    lastStation: TrainStation | null;
+} => {
+    let nextStation = null;
+    let previousStation = null;
+    let firstStation = position.stations[0] ?? null;
+    let lastStation = position.stations[position.stations.length - 1] ?? null;
+
     for (const station of position.stations) {
-        if (station.status === "Enroute") {
-            return station;
+        if (nextStation === null && station.status === "Enroute") {
+            nextStation = station;
+        }
+        if (station.status === "Departed") {
+            previousStation = station;
         }
     }
-    return null;
+    return {
+        nextStation,
+        previousStation,
+        firstStation,
+        lastStation,
+    };
 };
 
 const getTrainMarkerSVG = () => {
@@ -139,7 +159,6 @@ const getTrainMarkerSVG = () => {
 };
 
 export const usePositions = (currentBounds: Bounds | null) => {
-    const [hasWs, setHasWs] = useState<boolean>(false);
     const [boatPositions, setBoatPositions] = useState<
         Map<string, BoatPosition>
     >(new Map());
@@ -152,9 +171,6 @@ export const usePositions = (currentBounds: Bounds | null) => {
 
     useEffect(() => {
         if (currentBounds === null) {
-            return;
-        }
-        if (hasWs) {
             return;
         }
         // TODO: Set the domain somewhere centrally
@@ -236,7 +252,6 @@ export const usePositions = (currentBounds: Bounds | null) => {
                     console.error("unknown message", rawMsg);
             }
         };
-        setHasWs(true);
         return () => {
             websocket.close(1000, "component unmounted");
         };
@@ -276,7 +291,13 @@ type FlightData = {
     origin: Airport;
 };
 
-const useEarnAchievement = async (flightData: FlightData | null | false) => {
+const useEarnAchievement = async ({
+    flightData,
+    trainPosition,
+}: {
+    flightData: FlightData | null | false;
+    trainPosition: TrainPosition | null;
+}) => {
     const { isAuthenticated } = useConvexAuth();
     const allAchievements = useQuery(api.achievements.get);
     const addAchievement = useMutation(api.user_achievements.add);
@@ -294,23 +315,64 @@ const useEarnAchievement = async (flightData: FlightData | null | false) => {
     };
 
     useEffect(() => {
-        if (!isAuthenticated || !flightData) {
+        if (!isAuthenticated) {
             return;
         }
         const earn = async () => {
             for (const achievement of allAchievements ?? []) {
-                if (
-                    achievement.category === "Airlines" &&
-                    achievement.name === flightData.airline.name
-                ) {
-                    await maybeAddAchievement(achievement._id);
-                }
-                if (
-                    achievement.category === "Airports" &&
-                    (achievement.name === flightData.destination.iata_code ||
-                        achievement.name === flightData.origin.iata_code)
-                ) {
-                    await maybeAddAchievement(achievement._id);
+                switch (achievement.category) {
+                    case "Airlines": {
+                        if (
+                            flightData &&
+                            achievement.name === flightData.airline.name
+                        ) {
+                            await maybeAddAchievement(achievement._id);
+                        }
+                        break;
+                    }
+                    case "Airports": {
+                        if (
+                            flightData &&
+                            (achievement.name ===
+                                flightData.destination.iata_code ||
+                                achievement.name ===
+                                    flightData.origin.iata_code)
+                        ) {
+                            await maybeAddAchievement(achievement._id);
+                        }
+                        break;
+                    }
+                    case "Train Routes": {
+                        if (
+                            trainPosition &&
+                            achievement.name === trainPosition.routeName
+                        ) {
+                            await maybeAddAchievement(achievement._id);
+                        }
+                        break;
+                    }
+                    case "Train Stations": {
+                        if (trainPosition) {
+                            const {
+                                firstStation,
+                                lastStation,
+                                nextStation,
+                                previousStation,
+                            } = computeStations(trainPosition);
+                            if (
+                                achievement.name === firstStation?.name ||
+                                achievement.name === lastStation?.name ||
+                                achievement.name == nextStation?.name ||
+                                achievement.name === previousStation?.name
+                            ) {
+                                await maybeAddAchievement(achievement._id);
+                            }
+                        }
+                        break;
+                    }
+                    default: {
+                        console.log("unknown achievement:", achievement);
+                    }
                 }
             }
         };
@@ -339,7 +401,7 @@ const AirplanePopup = ({ position }: { position: AirplanePosition }) => {
     const [flightData, setFlightData] = useState<FlightData | null | false>(
         null,
     );
-    useEarnAchievement(flightData);
+    useEarnAchievement({ flightData, trainPosition: null });
 
     useEffect(() => {
         if (flightData !== null) {
@@ -446,16 +508,21 @@ export const BoatMarkers = ({
 };
 
 const TrainPopup = ({ position }: { position: TrainPosition }) => {
-    const nextStationOrNull = nextStation(position);
+    const { nextStation, previousStation, firstStation, lastStation } =
+        computeStations(position);
+    useEarnAchievement({ flightData: null, trainPosition: position });
 
     return (
         <Fragment>
             <div>
                 {position.routeName} ({position.trainID})
             </div>
-            {nextStationOrNull !== null && (
-                <div>Next station: {nextStationOrNull.name}</div>
+            {firstStation !== null && <div>Origin: {firstStation.name}</div>}
+            {previousStation !== null && (
+                <div>Previous: {previousStation.name}</div>
             )}
+            {nextStation !== null && <div>Next: {nextStation.name}</div>}
+            {lastStation !== null && <div>Destination: {lastStation.name}</div>}
             <div>{position.trainTimely}</div>
         </Fragment>
     );
