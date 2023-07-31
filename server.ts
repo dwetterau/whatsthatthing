@@ -109,7 +109,7 @@ async function createServer() {
     });
     setupWebsocketServer();
     console.log("server listening...");
-    app.listen(5173);
+    app.listen(5173, "0.0.0.0");
 }
 
 createServer();
