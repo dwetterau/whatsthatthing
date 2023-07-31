@@ -1,6 +1,11 @@
 import { Fragment, useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { MapContainer, TileLayer, useMap } from "react-leaflet";
-import { AirplaneMarkers, BoatMarkers, usePositions } from "./positions";
+import {
+    AirplaneMarkers,
+    BoatMarkers,
+    TrainMarkers,
+    usePositions,
+} from "./positions";
 import { debug } from "./logger";
 
 export type Bounds = {
@@ -40,7 +45,8 @@ const InnerMap = ({
         return null;
     }, [map]);
 
-    const { boatPositions, airplanePositions } = usePositions(currentBounds);
+    const { boatPositions, trainPositions, airplanePositions } =
+        usePositions(currentBounds);
 
     return (
         <Fragment>
@@ -49,6 +55,7 @@ const InnerMap = ({
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
             <BoatMarkers boatPositions={boatPositions} />
+            <TrainMarkers trainPositions={trainPositions} />
             <AirplaneMarkers airplanePositions={airplanePositions} />
         </Fragment>
     );

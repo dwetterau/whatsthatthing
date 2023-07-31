@@ -1,3 +1,4 @@
+import { response } from "express";
 import WebSocket, { WebSocketServer } from "ws";
 
 type Bounds = {
@@ -31,6 +32,7 @@ class RegionFetcher {
         ws: WebSocket | null;
     }> = [];
     private openSkyIntervalId;
+    private amtrakerIntervalId;
 
     public destroyed: boolean = false;
 
@@ -100,12 +102,43 @@ class RegionFetcher {
                 msg: data?.states ?? [],
             });
         };
+
+        const fetchAmtraker = async () => {
+            this.log("fetching Amtraker data");
+            const response = await fetch(
+                "https://api-v3.amtraker.com/v3/trains",
+            );
+            const data = await response.json();
+
+            const filteredData = {};
+            Object.keys(data).forEach((key) => {
+                // This is an array of each train.
+                const trainRoute = data[key].filter((train) => {
+                    return (
+                        train.lat >= minLat &&
+                        train.lat <= maxLat &&
+                        train.lon >= minLng &&
+                        train.lon <= maxLng
+                    );
+                });
+                if (trainRoute.length > 0) {
+                    filteredData[key] = trainRoute;
+                }
+            });
+            this.addAndBroadcastMessage({
+                t: "Amtraker",
+                msg: filteredData,
+            });
+        };
+
         fetchOpenSky();
         this.openSkyIntervalId = setInterval(fetchOpenSky, 3 * 60 * 1000);
+        fetchAmtraker();
+        this.amtrakerIntervalId = setInterval(fetchAmtraker, 60 * 1000);
     }
 
     private addAndBroadcastMessage(message: {
-        t: "AISStream" | "OpenSky";
+        t: "AISStream" | "OpenSky" | "Amtraker";
         msg: object;
     }) {
         this.log(
