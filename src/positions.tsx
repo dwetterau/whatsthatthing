@@ -6,6 +6,7 @@ import { debug } from "./logger";
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { api } from "../convex/_generated/api";
 import { Id } from "../convex/_generated/dataModel";
+import { Achievements } from "./achievements";
 
 type AirplanePosition = {
     uniqueKey: string;
@@ -206,31 +207,44 @@ type FlightData = {
 
 const useEarnAchievement = async (flightData: FlightData | null | false) => {
     const { isAuthenticated } = useConvexAuth();
-    const achievements = useQuery(api.achievements.get);
+    const allAchievements = useQuery(api.achievements.get);
     const addAchievement = useMutation(api.user_achievements.add);
-    const [userAchievementId, setUserAchievementId] =
-        useState<Id<"userAchievements"> | null>(null);
+    const achievements = useQuery(api.user_achievements.list);
+
+    const maybeAddAchievement = async (achievementId: Id<"achievements">) => {
+        const alreadyEarned = achievements?.find(
+            (achievement) => achievement.achievementId === achievementId,
+        );
+        if (alreadyEarned) {
+            return;
+        }
+        console.log("Recording achievement:", achievementId);
+        await addAchievement({ achievementId });
+    };
 
     useEffect(() => {
         if (!isAuthenticated || !flightData) {
             return;
         }
         const earn = async () => {
-            for (const achievement of achievements ?? []) {
-                if (achievement.name === flightData.airline.name) {
-                    console.log("Recording achievement:", achievement);
-                    setUserAchievementId(
-                        await addAchievement({
-                            achievementId: achievement._id,
-                        }),
-                    );
+            for (const achievement of allAchievements ?? []) {
+                if (
+                    achievement.category === "Airlines" &&
+                    achievement.name === flightData.airline.name
+                ) {
+                    await maybeAddAchievement(achievement._id);
+                }
+                if (
+                    achievement.category === "Airports" &&
+                    (achievement.name === flightData.destination.iata_code ||
+                        achievement.name === flightData.origin.iata_code)
+                ) {
+                    await maybeAddAchievement(achievement._id);
                 }
             }
         };
         earn();
-    }, [isAuthenticated, flightData, userAchievementId]);
-
-    return userAchievementId;
+    }, [isAuthenticated, flightData, allAchievements, achievements]);
 };
 
 const FlightDataComponent = ({ flightData }: { flightData: FlightData }) => {
@@ -271,7 +285,10 @@ const AirplanePopup = ({ position }: { position: AirplanePosition }) => {
                     { signal: abortController.signal },
                 );
                 const data = await response.json();
-                if (data?.response?.flightroute) {
+                if (
+                    data?.response?.flightroute &&
+                    data.response.flightroute.airline
+                ) {
                     setFlightData(data.response.flightroute);
                 } else {
                     setFlightData(false);
