@@ -34,7 +34,6 @@ async function createServer() {
                 req.method,
                 req.query,
             );
-            const apiKey = process.env.AVIATION_STACK_API_KEY;
             const { icao } = req.query;
             if (typeof icao !== "string") {
                 res.sendStatus(400);
@@ -65,12 +64,9 @@ async function createServer() {
                 }
                 flightInfoCache.set(query, "pending");
                 try {
-                    console.log(
-                        "performing actual aviationstack request for query",
-                        query,
-                    );
+                    console.log("performing actual request for query", query);
                     const response = await fetch(
-                        `http://api.aviationstack.com/v1/flights?access_key=${apiKey}&flight_icao=${query}`,
+                        `https://api.adsbdb.com/v0/callsign/${query}`,
                     );
                     const data = await response.json();
                     flightInfoCache.set(query, data);
@@ -79,9 +75,7 @@ async function createServer() {
                     flightInfoCache.set(query, "error");
                 }
                 console.log(
-                    `got response from aviationstack. duration: ${
-                        new Date().getTime() - start
-                    }ms`,
+                    `got response. duration: ${new Date().getTime() - start}ms`,
                 );
                 return flightInfoCache.get(query);
             };

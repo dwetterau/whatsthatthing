@@ -178,40 +178,30 @@ export const usePositions = (currentBounds: Bounds | null) => {
 };
 
 type Airport = {
-    airport: string;
-    timezone: string;
-    iata: string;
-    icao: string;
-    terminal: string | null;
-    // A date
-    estimated: string;
-    gate: string;
-    scheduled: string;
-    delay: number | null;
+    country_iso_name: string;
+    country_name: string;
+    elevation: number;
+    iata_code: string;
+    latitude: number;
+    longitude: number;
+    municipality: string;
+    name: string;
 };
 
 type FlightData = {
+    callsign: string;
+    callsign_icao: string;
+    callsign_iata: string;
     airline: {
         name: string;
-        iata: string;
         icao: string;
-    };
-    arrival: Airport;
-    departure: Airport;
-    flight: {
         iata: string;
-        icao: string;
-        number: string;
+        country: string;
+        country_iso: string;
+        callsign: string;
     };
-    // Format YYYY-MM-DD
-    flight_date: string;
-    flight_status:
-        | "scheduled"
-        | "active"
-        | "diverted"
-        | "landed"
-        | "cancelled"
-        | "incident";
+    destination: Airport;
+    origin: Airport;
 };
 
 const useEarnAchievement = async (flightData: FlightData | null | false) => {
@@ -247,16 +237,15 @@ const FlightDataComponent = ({ flightData }: { flightData: FlightData }) => {
     return (
         <div style={{ marginTop: "1em" }}>
             <div>
-                Flight: {flightData.airline.name} {flightData.flight.number}
+                Flight: {flightData.airline.name} {flightData.callsign_iata}
             </div>
             <div>
-                From: {flightData.departure.airport} (
-                {flightData.departure.iata})
+                From: {flightData.origin.name} ({flightData.origin.iata_code})
             </div>
             <div>
-                To: {flightData.arrival.airport} ({flightData.arrival.iata})
+                To: {flightData.destination.name} (
+                {flightData.destination.iata_code})
             </div>
-            <div>Status: {flightData.flight_status}</div>
         </div>
     );
 };
@@ -282,9 +271,8 @@ const AirplanePopup = ({ position }: { position: AirplanePosition }) => {
                     { signal: abortController.signal },
                 );
                 const data = await response.json();
-                if ((data.data ?? []).length > 0) {
-                    const flightData = data.data[0];
-                    setFlightData(flightData);
+                if (data?.response?.flightroute) {
+                    setFlightData(data.response.flightroute);
                 } else {
                     setFlightData(false);
                 }
