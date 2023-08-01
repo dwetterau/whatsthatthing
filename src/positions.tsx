@@ -2,10 +2,11 @@ import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { Fragment, useEffect, useState } from "react";
 import { Marker, Popup } from "react-leaflet";
 import { api } from "../convex/_generated/api";
-import { Id } from "../convex/_generated/dataModel";
+import { Doc, Id } from "../convex/_generated/dataModel";
 import { debug } from "./logger";
 import type { Bounds } from "./map";
 import { getIcon } from "./marker";
+import { toast } from "react-hot-toast";
 
 type AirplanePosition = {
     uniqueKey: string;
@@ -315,15 +316,27 @@ const useEarnAchievement = async ({
     const addAchievement = useMutation(api.user_achievements.add);
     const achievements = useQuery(api.user_achievements.list);
 
-    const maybeAddAchievement = async (achievementId: Id<"achievements">) => {
+    const maybeAddAchievement = async (achievement: Doc<"achievements">) => {
+        const id = achievement._id;
         const alreadyEarned = achievements?.find(
-            (achievement) => achievement.achievementId === achievementId,
+            (achievement) => achievement.achievementId === id,
         );
         if (alreadyEarned) {
             return;
         }
-        console.log("Recording achievement:", achievementId);
-        await addAchievement({ achievementId });
+        console.log("Recording achievement:", achievement.name);
+        toast(
+            `Achievement unlocked: ${achievement.category} - ${achievement.name}`,
+            {
+                icon: "🏆",
+                style: {
+                    borderRadius: "10px",
+                    background: "#333",
+                    color: "#fff",
+                },
+            },
+        );
+        await addAchievement({ achievementId: id });
     };
 
     useEffect(() => {
@@ -338,7 +351,7 @@ const useEarnAchievement = async ({
                             flightData &&
                             achievement.name === flightData.airline.name
                         ) {
-                            await maybeAddAchievement(achievement._id);
+                            await maybeAddAchievement(achievement);
                         }
                         break;
                     }
@@ -350,7 +363,7 @@ const useEarnAchievement = async ({
                                 achievement.name ===
                                     flightData.origin.iata_code)
                         ) {
-                            await maybeAddAchievement(achievement._id);
+                            await maybeAddAchievement(achievement);
                         }
                         break;
                     }
@@ -359,7 +372,7 @@ const useEarnAchievement = async ({
                             trainPosition &&
                             achievement.name === trainPosition.routeName
                         ) {
-                            await maybeAddAchievement(achievement._id);
+                            await maybeAddAchievement(achievement);
                         }
                         break;
                     }
@@ -377,7 +390,7 @@ const useEarnAchievement = async ({
                                 achievement.name == nextStation?.name ||
                                 achievement.name === previousStation?.name
                             ) {
-                                await maybeAddAchievement(achievement._id);
+                                await maybeAddAchievement(achievement);
                             }
                         }
                         break;

@@ -25,7 +25,7 @@ The concept is for this to be a thing you do when you're sitting on a rooftop in
 -   [x] Add user login for storing collectables
 -   [x] Implement first collectable
 -   [x] Fetch Amtrak / train data
--   [ ] Better notifications when you earn an achievement
+-   [x] Better notifications when you earn an achievement
 -   [ ] Fetch boat data
 -   [ ] Fetch plane model data
 -   [ ] Fetch flight numbers
@@ -37,3 +37,6 @@ The concept is for this to be a thing you do when you're sitting on a rooftop in
 -   [x] Sometimes the client isn't getting or applying updates that the server is supposedly getting.
 -   [x] Hardcode or round regions so that we re-use them more often (or don't allow too many)
 -   [x] Setup eslint to automatically reformat on save (remove newlines, etc.)
+-   [ ] Prune the list of locations (remove duplicates)
+-   [ ] Store locations for some amount of time (15 minutes?) after last hearing about them
+-   [ ] Show lines of the path of objects as they move?

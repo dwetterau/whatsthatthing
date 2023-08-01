@@ -5,6 +5,7 @@ import useResizeObserver from "@react-hook/resize-observer";
 import { Authentication } from "./authentication";
 import { Authenticated } from "convex/react";
 import { Achievements } from "./achievements";
+import { Toaster } from "react-hot-toast";
 
 const NAV_HEIGHT = 45;
 
@@ -27,6 +28,7 @@ export function App() {
 
     return (
         <div style={{ height: "100%" }} ref={containerRef}>
+            <Toaster position="bottom-center" reverseOrder={false} />
             <nav
                 style={{
                     height: NAV_HEIGHT,

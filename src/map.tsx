@@ -1,17 +1,17 @@
-import { Fragment, useEffect, useLayoutEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useLayoutEffect, useState } from "react";
 import {
     MapContainer,
     Rectangle,
     TileLayer,
     useMapEvents,
 } from "react-leaflet";
+import { debug } from "./logger";
 import {
     AirplaneMarkers,
     BoatMarkers,
     TrainMarkers,
     usePositions,
 } from "./positions";
-import { debug } from "./logger";
 
 export type Bounds = {
     minLat: number;
