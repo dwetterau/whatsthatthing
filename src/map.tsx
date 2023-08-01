@@ -1,5 +1,10 @@
 import { Fragment, useEffect, useLayoutEffect, useMemo, useState } from "react";
-import { MapContainer, TileLayer, useMapEvents } from "react-leaflet";
+import {
+    MapContainer,
+    Rectangle,
+    TileLayer,
+    useMapEvents,
+} from "react-leaflet";
 import {
     AirplaneMarkers,
     BoatMarkers,
@@ -13,6 +18,15 @@ export type Bounds = {
     maxLat: number;
     minLng: number;
     maxLng: number;
+};
+
+const convertBounds = (
+    bounds: Bounds,
+): [[number, number], [number, number]] => {
+    return [
+        [bounds.minLat, bounds.minLng],
+        [bounds.maxLat, bounds.maxLng],
+    ];
 };
 
 const InnerMap = ({
@@ -45,8 +59,19 @@ const InnerMap = ({
         }
     }, [map, maxHeight]);
 
-    const { boatPositions, trainPositions, airplanePositions } =
-        usePositions(bounds);
+    useEffect(() => {
+        if (map && bounds) {
+            // southWest, then northEast
+            map.fitBounds(convertBounds(bounds));
+        }
+    }, [map, bounds]);
+
+    const { boatPositions, trainPositions, airplanePositions } = usePositions(
+        bounds,
+        (newBounds) => {
+            setBounds(newBounds);
+        },
+    );
 
     return (
         <Fragment>
@@ -54,6 +79,12 @@ const InnerMap = ({
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright"/>OpenStreetMap</a> contributors'
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
+            {bounds && (
+                <Rectangle
+                    bounds={convertBounds(bounds)}
+                    pathOptions={{ color: "white", fillOpacity: 0 }}
+                />
+            )}
             <BoatMarkers boatPositions={boatPositions} />
             <TrainMarkers trainPositions={trainPositions} />
             <AirplaneMarkers airplanePositions={airplanePositions} />
@@ -63,8 +94,8 @@ const InnerMap = ({
 
 export const MapWrapper = ({ maxHeight }: { maxHeight: number }) => {
     const [center, setCenter] = useState<{ lat: number; lng: number }>({
-        lat: 40.7869,
-        lng: -73.9505,
+        lat: 40.75,
+        lng: -74,
     });
 
     useEffect(() => {
@@ -85,9 +116,8 @@ export const MapWrapper = ({ maxHeight }: { maxHeight: number }) => {
                 style={{ height: "100%", width: "100%" }}
                 center={[center.lat, center.lng]}
                 zoom={12}
-                minZoom={12}
                 scrollWheelZoom={false}
-                dragging={false}
+                dragging={true}
             >
                 <InnerMap center={center} maxHeight={maxHeight} />
             </MapContainer>

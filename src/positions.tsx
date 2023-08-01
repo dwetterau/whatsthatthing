@@ -1,11 +1,11 @@
-import { Fragment, useEffect, useState } from "react";
-import type { Bounds } from "./map";
-import { Marker, Popup } from "react-leaflet";
-import { getIcon } from "./marker";
-import { debug } from "./logger";
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
+import { Fragment, useEffect, useState } from "react";
+import { Marker, Popup } from "react-leaflet";
 import { api } from "../convex/_generated/api";
 import { Id } from "../convex/_generated/dataModel";
+import { debug } from "./logger";
+import type { Bounds } from "./map";
+import { getIcon } from "./marker";
 
 type AirplanePosition = {
     uniqueKey: string;
@@ -158,7 +158,10 @@ const getTrainMarkerSVG = () => {
 </svg>`)}`;
 };
 
-export const usePositions = (currentBounds: Bounds | null) => {
+export const usePositions = (
+    currentBounds: Bounds | null,
+    onSetBounds: (bounds: Bounds) => void,
+) => {
     const [boatPositions, setBoatPositions] = useState<
         Map<string, BoatPosition>
     >(new Map());
@@ -183,6 +186,10 @@ export const usePositions = (currentBounds: Bounds | null) => {
                     if (rawMsg.msg === "connection established") {
                         websocket!.send(JSON.stringify(currentBounds));
                     }
+                    break;
+                }
+                case "Bounds": {
+                    onSetBounds(rawMsg.msg);
                     break;
                 }
                 case "AISStream": {
@@ -255,7 +262,12 @@ export const usePositions = (currentBounds: Bounds | null) => {
         return () => {
             websocket.close(1000, "component unmounted");
         };
-    }, [currentBounds]);
+    }, [
+        currentBounds?.minLat,
+        currentBounds?.maxLat,
+        currentBounds?.minLng,
+        currentBounds?.maxLng,
+    ]);
 
     return {
         boatPositions,

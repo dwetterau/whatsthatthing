@@ -232,6 +232,14 @@ const registerBounds = (ws: WebSocket, bounds: Bounds) => {
     };
 };
 
+// TODO: Find the bounds that overlap with what the user passes in, and then use those.
+const allowedBounds: Bounds = {
+    minLat: 40.6,
+    maxLat: 40.9,
+    minLng: -74.3,
+    maxLng: -73.7,
+};
+
 export const setupWebsocketServer = () => {
     const socketServer = new WebSocketServer({ port: 5174 });
     socketServer.on("connection", (ws) => {
@@ -249,8 +257,14 @@ export const setupWebsocketServer = () => {
         });
         ws.on("message", (data) => {
             const rawMsg = JSON.parse(data.toString());
-            console.log("got message from client:", rawMsg);
-            disconnectFn = registerBounds(ws, rawMsg as Bounds);
+            console.log(
+                "got message from client:",
+                rawMsg,
+                "using bounds",
+                allowedBounds,
+            );
+            disconnectFn = registerBounds(ws, allowedBounds);
+            ws.send(JSON.stringify({ t: "Bounds", msg: allowedBounds }));
         });
     });
 };
