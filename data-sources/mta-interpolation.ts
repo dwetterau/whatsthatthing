@@ -11,6 +11,7 @@ export interface InterpolatedPosition {
     lat: number;
     lng: number;
     progress: number; // 0-1, where 0 is at last stop, 1 is at next stop
+    heading?: number; // Bearing in degrees (0 = North, 90 = East, 180 = South, 270 = West)
 }
 
 /**
@@ -28,6 +29,27 @@ function distance(lat1: number, lng1: number, lat2: number, lng2: number): numbe
             Math.sin(dLng / 2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return R * c;
+}
+
+/**
+ * Calculate bearing (heading) from point 1 to point 2 in degrees
+ * Returns bearing in degrees where 0 = North, 90 = East, 180 = South, 270 = West
+ */
+function bearing(lat1: number, lng1: number, lat2: number, lng2: number): number {
+    const dLng = ((lng2 - lng1) * Math.PI) / 180;
+    const lat1Rad = (lat1 * Math.PI) / 180;
+    const lat2Rad = (lat2 * Math.PI) / 180;
+    
+    const y = Math.sin(dLng) * Math.cos(lat2Rad);
+    const x =
+        Math.cos(lat1Rad) * Math.sin(lat2Rad) -
+        Math.sin(lat1Rad) * Math.cos(lat2Rad) * Math.cos(dLng);
+    
+    const bearingRad = Math.atan2(y, x);
+    const bearingDeg = (bearingRad * 180) / Math.PI;
+    
+    // Normalize to 0-360
+    return (bearingDeg + 360) % 360;
 }
 
 /**
@@ -62,7 +84,7 @@ function interpolateAlongShape(
     startIndex: number,
     endIndex: number,
     progress: number,
-): { lat: number; lng: number } {
+): { lat: number; lng: number; heading?: number } {
     if (startIndex === endIndex) {
         return { lat: shape[startIndex].lat, lng: shape[startIndex].lng };
     }
@@ -110,9 +132,16 @@ function interpolateAlongShape(
     const p1 = shape[startIndex + segmentIndex];
     const p2 = shape[startIndex + segmentIndex + 1];
     
+    const lat = p1.lat + (p2.lat - p1.lat) * segmentProgress;
+    const lng = p1.lng + (p2.lng - p1.lng) * segmentProgress;
+    
+    // Calculate heading based on the direction of the current segment
+    const heading = bearing(p1.lat, p1.lng, p2.lat, p2.lng);
+    
     return {
-        lat: p1.lat + (p2.lat - p1.lat) * segmentProgress,
-        lng: p1.lng + (p2.lng - p1.lng) * segmentProgress,
+        lat,
+        lng,
+        heading,
     };
 }
 
@@ -143,10 +172,13 @@ export function interpolateTrainPosition(
     const timeRange = nextStopTime - lastStopTime;
     if (timeRange <= 0) {
         // Train is at or past next stop
+        // Use heading from last stop to next stop
+        const heading = bearing(lastStop.lat, lastStop.lng, nextStop.lat, nextStop.lng);
         return {
             lat: nextStop.lat,
             lng: nextStop.lng,
             progress: 1,
+            heading,
         };
     }
     
@@ -184,14 +216,20 @@ export function interpolateTrainPosition(
             lat: position.lat,
             lng: position.lng,
             progress,
+            heading: position.heading,
         };
     }
     
     // Fallback: linear interpolation between stops
+    const lat = lastStop.lat + (nextStop.lat - lastStop.lat) * progress;
+    const lng = lastStop.lng + (nextStop.lng - lastStop.lng) * progress;
+    const heading = bearing(lat, lng, nextStop.lat, nextStop.lng);
+    
     return {
-        lat: lastStop.lat + (nextStop.lat - lastStop.lat) * progress,
-        lng: lastStop.lng + (nextStop.lng - lastStop.lng) * progress,
+        lat,
+        lng,
         progress,
+        heading,
     };
 }
 

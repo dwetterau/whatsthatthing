@@ -386,6 +386,7 @@ export class MTASource implements DataSource {
                             nextStop: nextStop.stopName,
                             lastStop: lastStop.stopName,
                             progress: position.progress,
+                            heading: position.heading,
                         });
                     }
                 }

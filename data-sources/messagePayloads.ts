@@ -16,6 +16,7 @@ export interface MTATrainPosition {
     nextStop?: string;
     lastStop?: string;
     progress?: number;
+    heading?: number; // Bearing in degrees (0 = North, 90 = East, 180 = South, 270 = West)
 }
 
 export interface MTAMessagePayload {
