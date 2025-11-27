@@ -4,6 +4,7 @@ import type {
     BroadcastFunction,
     Logger,
     DataSourceMessage,
+    MessageType,
 } from "./dataSource";
 
 export class AmtrakerSource implements DataSource<"Amtraker", void> {
@@ -14,11 +15,14 @@ export class AmtrakerSource implements DataSource<"Amtraker", void> {
 
     constructor(
         config: DataSourceConfig,
-        broadcast: BroadcastFunction<"Amtraker">,
+        broadcast: <T extends MessageType>(message: DataSourceMessage<T>) => void,
         log: Logger,
     ) {
         this.config = config;
-        this.broadcast = broadcast;
+        // Wrap the generic broadcast function with our specific type
+        this.broadcast = (message: DataSourceMessage<"Amtraker">) => {
+            broadcast(message);
+        };
         this.log = log;
     }
 

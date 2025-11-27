@@ -9,7 +9,6 @@ export type {
 
 import {
     type DataSourceConfig,
-    type BroadcastFunction,
     type Logger,
     type MessageType,
     type DataSourceMessage,
@@ -30,29 +29,16 @@ export function initializeDataSources(
     log: Logger,
     aisApiKey: string,
 ): InitializedDataSources {
-    // Create typed broadcast functions for each source
-    const aisStreamBroadcast: BroadcastFunction<"AISStream"> = (message) => {
-        broadcast(message);
-    };
-
-    const openSkyBroadcast: BroadcastFunction<"OpenSky"> = (message) => {
-        broadcast(message);
-    };
-
-    const amtrakerBroadcast: BroadcastFunction<"Amtraker"> = (message) => {
-        broadcast(message);
-    };
-
     // Initialize and start AISStream source
-    const aisStream = new AISStreamSource(config, aisStreamBroadcast, log, { apiKey: aisApiKey });
+    const aisStream = new AISStreamSource(config, broadcast, log, { apiKey: aisApiKey });
     aisStream.start();
 
     // Initialize and start OpenSky source
-    const openSky = new OpenSkySource(config, openSkyBroadcast, log);
+    const openSky = new OpenSkySource(config, broadcast, log);
     openSky.start();
 
     // Initialize and start Amtraker source
-    const amtraker = new AmtrakerSource(config, amtrakerBroadcast, log);
+    const amtraker = new AmtrakerSource(config, broadcast, log);
     amtraker.start();
 
     return {

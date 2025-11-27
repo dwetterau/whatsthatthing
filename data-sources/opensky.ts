@@ -4,6 +4,7 @@ import type {
     BroadcastFunction,
     Logger,
     DataSourceMessage,
+    MessageType,
 } from "./dataSource";
 
 export class OpenSkySource implements DataSource<"OpenSky", void> {
@@ -14,11 +15,14 @@ export class OpenSkySource implements DataSource<"OpenSky", void> {
 
     constructor(
         config: DataSourceConfig,
-        broadcast: BroadcastFunction<"OpenSky">,
+        broadcast: <T extends MessageType>(message: DataSourceMessage<T>) => void,
         log: Logger,
     ) {
         this.config = config;
-        this.broadcast = broadcast;
+        // Wrap the generic broadcast function with our specific type
+        this.broadcast = (message: DataSourceMessage<"OpenSky">) => {
+            broadcast(message);
+        };
         this.log = log;
     }
 

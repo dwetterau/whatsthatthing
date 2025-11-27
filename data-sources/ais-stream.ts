@@ -5,6 +5,7 @@ import type {
     BroadcastFunction,
     Logger,
     DataSourceMessage,
+    MessageType,
 } from "./dataSource";
 
 export interface AISStreamConfig {
@@ -20,12 +21,15 @@ export class AISStreamSource implements DataSource<"AISStream", AISStreamConfig>
 
     constructor(
         config: DataSourceConfig,
-        broadcast: BroadcastFunction<"AISStream">,
+        broadcast: <T extends MessageType>(message: DataSourceMessage<T>) => void,
         log: Logger,
         sourceConfig: AISStreamConfig,
     ) {
         this.config = config;
-        this.broadcast = broadcast;
+        // Wrap the generic broadcast function with our specific type
+        this.broadcast = (message: DataSourceMessage<"AISStream">) => {
+            broadcast(message);
+        };
         this.log = log;
         this.apiKey = sourceConfig.apiKey;
     }
