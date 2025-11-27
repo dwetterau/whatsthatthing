@@ -1,4 +1,11 @@
 import WebSocket, { WebSocketServer } from "ws";
+import {
+    initializeDataSources,
+    type DataSourceConfig,
+    type DataSourceMessage,
+    type InitializedDataSources,
+    type MessageType,
+} from "./data-sources";
 
 type Bounds = {
     maxLat: number;
@@ -24,19 +31,18 @@ class RegionFetcher {
     private refs: number;
     private lastAccessedTime: Date;
 
-    private aisStreamConnection?: WebSocket;
     private messages: Array<string> = [];
     private listeners: Array<{
         messageIndex: number;
         ws: WebSocket | null;
     }> = [];
-    private openSkyIntervalId?: NodeJS.Timeout;
-    private amtrakerIntervalId?: NodeJS.Timeout;
+
+    private dataSources: InitializedDataSources;
 
     public destroyed: boolean = false;
 
-    private log(...any) {
-        console.log("Fetcher: ", this.key, ...any);
+    private log(...args: any[]) {
+        console.log("Fetcher: ", this.key, ...args);
     }
 
     constructor(bounds: Bounds, aisApiKey: string) {
@@ -44,98 +50,40 @@ class RegionFetcher {
         this.bounds = bounds;
         this.refs = 0;
         this.lastAccessedTime = new Date();
-        const { maxLat, minLat, maxLng, minLng } = bounds;
 
-        const aisStreamConnection = new WebSocket(
-            "wss://stream.aisstream.io/v0/stream",
+        const config: DataSourceConfig = {
+            bounds: {
+                maxLat: bounds.maxLat,
+                minLat: bounds.minLat,
+                maxLng: bounds.maxLng,
+                minLng: bounds.minLng,
+            },
+        };
+
+        // Create broadcast function that adds messages and broadcasts them
+        const broadcast = <T extends MessageType>(
+            message: DataSourceMessage<T>,
+        ): void => {
+            this.addAndBroadcastMessage(message);
+        };
+
+        // Create logger function
+        const logger = (...args: any[]) => {
+            this.log(...args);
+        };
+
+        // Initialize and start all data sources
+        this.dataSources = initializeDataSources(
+            config,
+            broadcast,
+            logger,
+            aisApiKey,
         );
-        aisStreamConnection.on("open", () => {
-            this.log("Opened connection to AISStream");
-            aisStreamConnection!.send(
-                JSON.stringify({
-                    APIKey: aisApiKey,
-                    BoundingBoxes: [
-                        [
-                            [maxLat, minLng],
-                            [minLat, maxLng],
-                        ],
-                    ],
-                    FilterMessageTypes: ["PositionReport"],
-                }),
-            );
-        });
-        aisStreamConnection.on("error", (error) => {
-            this.log("Error from AISStream:", error);
-        });
-        aisStreamConnection.on("message", (e) => {
-            this.addAndBroadcastMessage({
-                t: "AISStream",
-                msg: JSON.parse(e.toString()),
-            });
-        });
-        this.aisStreamConnection = aisStreamConnection;
-
-        const fetchOpenSky = async () => {
-            const params = new URLSearchParams();
-            params.set("lamin", minLat + "");
-            params.set("lamax", maxLat + "");
-            params.set("lomin", minLng + "");
-            params.set("lomax", maxLng + "");
-
-            this.log("fetching OpenSky states...");
-            const response = await fetch(
-                "https://opensky-network.org/api/states/all?" +
-                    params.toString(),
-            );
-            const data = await response.json();
-            this.addAndBroadcastMessage({
-                t: "OpenSky",
-                msg: data?.states ?? [],
-            });
-        };
-
-        const fetchAmtraker = async () => {
-            this.log("fetching Amtraker data");
-            try {
-                const response = await fetch(
-                    "https://api-v3.amtraker.com/v3/trains",
-                );
-                const data = await response.json();
-
-                const filteredData = {};
-                Object.keys(data).forEach((key) => {
-                    // This is an array of each train.
-                    const trainRoute = data[key].filter((train) => {
-                        return (
-                            train.lat >= minLat &&
-                            train.lat <= maxLat &&
-                            train.lon >= minLng &&
-                            train.lon <= maxLng
-                        );
-                    });
-                    if (trainRoute.length > 0) {
-                        filteredData[key] = trainRoute;
-                    }
-                });
-                this.addAndBroadcastMessage({
-                    t: "Amtraker",
-                    msg: filteredData,
-                });
-            } catch (e) {
-                this.log("Error fetching Amtraker data", e);
-            }
-        };
-
-        fetchOpenSky();
-        this.openSkyIntervalId = setInterval(fetchOpenSky, 3 * 60 * 1000);
-        fetchAmtraker();
-        this.amtrakerIntervalId = setInterval(fetchAmtraker, 60 * 1000);
     }
 
-    private addAndBroadcastMessage(message: {
-        t: "AISStream" | "OpenSky" | "Amtraker";
-        msg: object;
-    }) {
+    private addAndBroadcastMessage<T extends MessageType>(
+        message: DataSourceMessage<T>,
+    ) {
         this.log(
             `got ${message.t} message. Appending as message ${this.messages.length}`,
         );
@@ -200,9 +148,9 @@ class RegionFetcher {
     }
 
     public destroy() {
-        this.aisStreamConnection?.close();
-        clearInterval(this.openSkyIntervalId);
-        clearInterval(this.amtrakerIntervalId);
+        this.dataSources.aisStream.stop();
+        this.dataSources.openSky.stop();
+        this.dataSources.amtraker.stop();
         this.destroyed = true;
     }
 }
