@@ -7,7 +7,7 @@ import type {
     MessageType,
 } from "./dataSource";
 
-export class OpenSkySource implements DataSource<"OpenSky", void> {
+export class OpenSkySource implements DataSource {
     private config: DataSourceConfig;
     private broadcast: BroadcastFunction<"OpenSky">;
     private log: Logger;
@@ -43,7 +43,9 @@ export class OpenSkySource implements DataSource<"OpenSky", void> {
             const data = await response.json();
             const message: DataSourceMessage<"OpenSky"> = {
                 t: "OpenSky",
-                msg: data?.states ?? [],
+                msg: {
+                    states: data?.states ?? [],
+                },
             };
             this.broadcast(message);
         } catch (error) {

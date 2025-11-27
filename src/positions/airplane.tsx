@@ -7,6 +7,8 @@ import { toast } from "react-hot-toast";
 import { debug } from "../logger";
 import { getIcon } from "../marker";
 import { PositionHandler, Position } from "./base";
+import type { DataSourceMessage } from "../../data-sources/dataSource";
+import type { OpenSkyMessagePayload } from "../../data-sources/messagePayloads";
 
 export type AirplanePosition = Position & {
     callsign: string;
@@ -212,34 +214,34 @@ const AirplanePopup = ({ position }: { position: AirplanePosition }) => {
     );
 };
 
-export class AirplanePositionHandler extends PositionHandler<AirplanePosition> {
+export class AirplanePositionHandler extends PositionHandler<AirplanePosition, "OpenSky"> {
     constructor() {
         super({
             getMessageType: () => "OpenSky",
             getMarkerSVG: (position) => getAirplaneMarkerSVG(position.heading),
             renderPopup: (position) => <AirplanePopup position={position} />,
-            parseMessage: (rawMsg: any): Map<string, AirplanePosition> | null => {
+            parseMessage: (rawMsg: DataSourceMessage<"OpenSky">): Map<string, AirplanePosition> | null => {
+                const payload: OpenSkyMessagePayload = rawMsg.msg;
                 const newAirplanePositions = new Map<
                     string,
                     AirplanePosition
                 >();
-                for (const state of rawMsg.msg) {
-                    // See if there's data
-                    let missingData = false;
-                    for (let i = 0; i < 7; i++) {
-                        missingData ||= !state[i];
-                    }
-                    if (missingData) {
+                for (const state of payload.states) {
+                    // See if there's data - we need at least indices 0, 1, 3, 5, 6, 9, 10
+                    // For the full data format, see: https://openskynetwork.github.io/opensky-api/rest.html#all-state-vectors
+                    // [0] = icao24, [1] = callsign, [3] = time, [5] = longitude, [6] = latitude, 
+                    // [7] = altitude (can be null), [9] = velocity, [10] = heading
+                    if (!state[0] || !state[1] || !state[3] || state[5] == null || state[6] == null || 
+                        state[9] == null || state[10] == null) {
                         continue;
                     }
-                    // For the full data format, see: https://openskynetwork.github.io/opensky-api/rest.html#all-state-vectors
                     newAirplanePositions.set(state[0], {
                         uniqueKey: state[0],
                         callsign: state[1],
                         positionTime: new Date(state[3] * 1000),
                         lng: state[5],
                         lat: state[6],
-                        altitudeMeters: state[7],
+                        altitudeMeters: state[7] ?? 0, // Altitude can be null, default to 0
                         heading: state[10],
                         velocityMetersPerSecond: state[9],
                     });

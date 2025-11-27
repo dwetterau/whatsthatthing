@@ -1,4 +1,5 @@
 import type React from "react";
+import type { DataSourceMessage, MessageType } from "../../data-sources/dataSource";
 
 export interface Position {
     uniqueKey: string;
@@ -6,30 +7,31 @@ export interface Position {
     lng: number;
 }
 
-export interface PositionHandlerConfig<T extends Position> {
+export interface PositionHandlerConfig<T extends Position, TMessageType extends MessageType = MessageType> {
     getMarkerSVG: (position: T) => string;
     renderPopup: (position: T) => React.ReactNode;
-    getMessageType: () => string;
-    parseMessage: (rawMsg: any) => Map<string, T> | null;
+    getMessageType: () => TMessageType;
+    parseMessage: (rawMsg: DataSourceMessage<TMessageType>) => Map<string, T> | null;
 }
 
-export abstract class PositionHandler<T extends Position> {
+export abstract class PositionHandler<T extends Position, TMessageType extends MessageType = MessageType> {
     protected positions: Map<string, T> = new Map();
-    protected config: PositionHandlerConfig<T>;
+    protected config: PositionHandlerConfig<T, TMessageType>;
 
-    constructor(config: PositionHandlerConfig<T>) {
+    constructor(config: PositionHandlerConfig<T, TMessageType>) {
         this.config = config;
     }
 
     /**
      * Handle a WebSocket message and update positions if applicable
      */
-    handleMessage(rawMsg: any): boolean {
+    handleMessage(rawMsg: DataSourceMessage<MessageType>): boolean {
         if (rawMsg.t !== this.config.getMessageType()) {
             return false;
         }
 
-        const newPositions = this.config.parseMessage(rawMsg);
+        // Type assertion is safe here because we've checked the message type matches
+        const newPositions = this.config.parseMessage(rawMsg as DataSourceMessage<TMessageType>);
         if (newPositions !== null) {
             this.updatePositions(newPositions);
             return true;

@@ -10,6 +10,7 @@ import {
     AirplaneMarkers,
     BoatMarkers,
     TrainMarkers,
+    MTAMarkers,
     usePositions,
 } from "./positions/index";
 
@@ -66,12 +67,17 @@ const InnerMap = ({
         }
     }, [map, bounds]);
 
-    const { boatPositions, trainPositions, airplanePositions } = usePositions(
+    const { boatPositions, trainPositions, airplanePositions, mtaPositions } = usePositions(
         bounds,
         (newBounds) => {
             setBounds(newBounds);
         },
     );
+
+    // Debug: Log marker counts
+    useEffect(() => {
+        console.log(`Marker counts - Boats: ${boatPositions.size}, Trains: ${trainPositions.size}, Planes: ${airplanePositions.size}, MTA: ${mtaPositions.size}`);
+    }, [boatPositions.size, trainPositions.size, airplanePositions.size, mtaPositions.size]);
 
     return (
         <Fragment>
@@ -88,6 +94,7 @@ const InnerMap = ({
             <BoatMarkers boatPositions={boatPositions} />
             <TrainMarkers trainPositions={trainPositions} />
             <AirplaneMarkers airplanePositions={airplanePositions} />
+            <MTAMarkers mtaPositions={mtaPositions} />
         </Fragment>
     );
 };

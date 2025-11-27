@@ -12,7 +12,7 @@ export interface AISStreamConfig {
     apiKey: string;
 }
 
-export class AISStreamSource implements DataSource<"AISStream", AISStreamConfig> {
+export class AISStreamSource implements DataSource {
     private config: DataSourceConfig;
     private broadcast: BroadcastFunction<"AISStream">;
     private log: Logger;

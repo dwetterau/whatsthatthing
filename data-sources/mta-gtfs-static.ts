@@ -32,10 +32,34 @@ export interface StopTime {
     stopSequence: number;
 }
 
+export interface Trip {
+    tripId: string;
+    routeId: string;
+    serviceId: string;
+    tripHeadsign: string;
+    directionId: number;
+    shapeId: string;
+}
+
+export interface Route {
+    routeId: string;
+    agencyId: string;
+    routeShortName: string;
+    routeLongName: string;
+    routeDesc: string;
+    routeType: number;
+    routeUrl: string;
+    routeColor: string;
+    routeTextColor: string;
+    routeSortOrder: number;
+}
+
 export interface StaticGTFSData {
     stops: Map<string, Stop>;
     shapes: Map<string, ShapePoint[]>; // shapeId -> ordered points
     stopTimes: Map<string, StopTime[]>; // tripId -> ordered stop times
+    trips: Map<string, Trip>; // tripId -> Trip
+    routes: Map<string, Route>; // routeId -> Route
 }
 
 /**
@@ -206,13 +230,129 @@ function parseStopTimes(csvContent: string): Map<string, StopTime[]> {
     return stopTimesMap;
 }
 
-// Default MTA GTFS ZIP URL
-const DEFAULT_GTFS_ZIP_URL = "https://rrgtfsfeeds.s3.amazonaws.com/gtfs_subway.zip";
+/**
+ * Parse trips.txt CSV content
+ */
+function parseTrips(csvContent: string): Map<string, Trip> {
+    const tripsMap = new Map<string, Trip>();
+    const lines = csvContent.trim().split("\n");
+    
+    if (lines.length === 0) return tripsMap;
+    
+    // Find header indices
+    const header = parseCSVLine(lines[0]);
+    const routeIdIdx = header.indexOf("route_id");
+    const tripIdIdx = header.indexOf("trip_id");
+    const serviceIdIdx = header.indexOf("service_id");
+    const tripHeadsignIdx = header.indexOf("trip_headsign");
+    const directionIdIdx = header.indexOf("direction_id");
+    const shapeIdIdx = header.indexOf("shape_id");
+    
+    if (routeIdIdx === -1 || tripIdIdx === -1) {
+        throw new Error("Invalid trips.txt format: missing required columns");
+    }
+    
+    for (let i = 1; i < lines.length; i++) {
+        const fields = parseCSVLine(lines[i]);
+        if (fields.length <= Math.max(routeIdIdx, tripIdIdx)) continue;
+        
+        const tripId = fields[tripIdIdx];
+        // Normalize routeId: trim whitespace and remove quotes if present
+        const routeId = fields[routeIdIdx] ? fields[routeIdIdx].trim().replace(/^["']|["']$/g, '') : "";
+        const serviceId = serviceIdIdx >= 0 ? fields[serviceIdIdx] : "";
+        const tripHeadsign = tripHeadsignIdx >= 0 ? fields[tripHeadsignIdx] : "";
+        const directionId = directionIdIdx >= 0 ? parseInt(fields[directionIdIdx], 10) : 0;
+        const shapeId = shapeIdIdx >= 0 ? fields[shapeIdIdx] : "";
+        
+        if (tripId && routeId) {
+            tripsMap.set(tripId, {
+                tripId,
+                routeId,
+                serviceId,
+                tripHeadsign,
+                directionId: isNaN(directionId) ? 0 : directionId,
+                shapeId,
+            });
+        }
+    }
+    
+    return tripsMap;
+}
+
+/**
+ * Parse routes.txt CSV content
+ */
+function parseRoutes(csvContent: string): Map<string, Route> {
+    const routesMap = new Map<string, Route>();
+    const lines = csvContent.trim().split("\n");
+    
+    if (lines.length === 0) return routesMap;
+    
+    // Find header indices
+    const header = parseCSVLine(lines[0]);
+    const routeIdIdx = header.indexOf("route_id");
+    const agencyIdIdx = header.indexOf("agency_id");
+    const routeShortNameIdx = header.indexOf("route_short_name");
+    const routeLongNameIdx = header.indexOf("route_long_name");
+    const routeDescIdx = header.indexOf("route_desc");
+    const routeTypeIdx = header.indexOf("route_type");
+    const routeUrlIdx = header.indexOf("route_url");
+    const routeColorIdx = header.indexOf("route_color");
+    const routeTextColorIdx = header.indexOf("route_text_color");
+    const routeSortOrderIdx = header.indexOf("route_sort_order");
+    
+    if (routeIdIdx === -1) {
+        throw new Error("Invalid routes.txt format: missing required columns");
+    }
+    
+    for (let i = 1; i < lines.length; i++) {
+        const fields = parseCSVLine(lines[i]);
+        if (fields.length <= routeIdIdx) continue;
+        
+        // Normalize routeId: trim whitespace and remove quotes if present
+        // Different GTFS sources use different formats (quoted vs unquoted, string vs number)
+        const routeId = fields[routeIdIdx] ? fields[routeIdIdx].trim().replace(/^["']|["']$/g, '') : "";
+        const agencyId = agencyIdIdx >= 0 ? fields[agencyIdIdx] : "";
+        const routeShortName = routeShortNameIdx >= 0 ? fields[routeShortNameIdx] : "";
+        const routeLongName = routeLongNameIdx >= 0 ? fields[routeLongNameIdx] : "";
+        const routeDesc = routeDescIdx >= 0 ? fields[routeDescIdx] : "";
+        const routeType = routeTypeIdx >= 0 ? parseInt(fields[routeTypeIdx], 10) : 0;
+        const routeUrl = routeUrlIdx >= 0 ? fields[routeUrlIdx] : "";
+        const routeColor = routeColorIdx >= 0 ? fields[routeColorIdx] : "";
+        const routeTextColor = routeTextColorIdx >= 0 ? fields[routeTextColorIdx] : "";
+        const routeSortOrder = routeSortOrderIdx >= 0 ? parseInt(fields[routeSortOrderIdx], 10) : 0;
+        
+        if (routeId) {
+            routesMap.set(routeId, {
+                routeId,
+                agencyId,
+                routeShortName,
+                routeLongName,
+                routeDesc,
+                routeType: isNaN(routeType) ? 0 : routeType,
+                routeUrl,
+                routeColor,
+                routeTextColor,
+                routeSortOrder: isNaN(routeSortOrder) ? 0 : routeSortOrder,
+            });
+        }
+    }
+    
+    return routesMap;
+}
+
+// MTA GTFS ZIP URLs by feed type
+const GTFS_ZIP_URLS = {
+    subway: "https://rrgtfsfeeds.s3.amazonaws.com/gtfs_subway.zip",
+    lirr: "https://rrgtfsfeeds.s3.amazonaws.com/gtfslirr.zip",
+    mnr: "https://rrgtfsfeeds.s3.amazonaws.com/gtfsmnr.zip",
+} as const;
 
 /**
  * Download and extract GTFS ZIP file
  */
 async function downloadAndExtractGTFSZip(
+    zipUrl: string,
     extractDir: string,
 ): Promise<void> {
     const fs = await import("fs/promises");
@@ -220,10 +360,10 @@ async function downloadAndExtractGTFSZip(
     const AdmZipModule = await import("adm-zip");
     const AdmZip = AdmZipModule.default || AdmZipModule;
     
-    console.log(`Downloading GTFS ZIP from ${DEFAULT_GTFS_ZIP_URL}...`);
+    console.log(`Downloading GTFS ZIP from ${zipUrl}...`);
     
     // Download the ZIP file
-    const response = await fetch(DEFAULT_GTFS_ZIP_URL);
+    const response = await fetch(zipUrl);
     if (!response.ok) {
         throw new Error(`Failed to download GTFS ZIP: ${response.statusText}`);
     }
@@ -247,12 +387,16 @@ async function checkFilesExist(
     stopsPath: string,
     shapesPath: string,
     stopTimesPath: string,
+    tripsPath: string,
+    routesPath: string,
 ): Promise<boolean> {
     const fs = await import("fs/promises");
     const filesExist = await Promise.all([
         fs.access(stopsPath).then(() => true).catch(() => false),
         fs.access(shapesPath).then(() => true).catch(() => false),
         fs.access(stopTimesPath).then(() => true).catch(() => false),
+        fs.access(tripsPath).then(() => true).catch(() => false),
+        fs.access(routesPath).then(() => true).catch(() => false),
     ]);
     return filesExist.every(exists => exists);
 }
@@ -264,11 +408,14 @@ async function ensureGTFSFiles(
     stopsPath: string,
     shapesPath: string,
     stopTimesPath: string,
+    tripsPath: string,
+    routesPath: string,
+    zipUrl: string,
 ): Promise<void> {
     const path = await import("path");
     
     // Check if all required files exist
-    if (await checkFilesExist(stopsPath, shapesPath, stopTimesPath)) {
+    if (await checkFilesExist(stopsPath, shapesPath, stopTimesPath, tripsPath, routesPath)) {
         return;
     }
     
@@ -276,10 +423,10 @@ async function ensureGTFSFiles(
     const extractDir = path.dirname(stopsPath);
     
     try {
-        await downloadAndExtractGTFSZip(extractDir);
+        await downloadAndExtractGTFSZip(zipUrl, extractDir);
         
         // Verify files were extracted
-        if (!(await checkFilesExist(stopsPath, shapesPath, stopTimesPath))) {
+        if (!(await checkFilesExist(stopsPath, shapesPath, stopTimesPath, tripsPath, routesPath))) {
             const resolvedPath = path.resolve(stopsPath);
             throw new Error(
                 `GTFS ZIP extraction incomplete. Missing files in ${path.dirname(resolvedPath)}. ` +
@@ -298,35 +445,48 @@ async function ensureGTFSFiles(
 }
 
 /**
- * Load static GTFS data from file paths
+ * Load static GTFS data for a specific feed type
  * 
  * If files don't exist locally, automatically downloads and extracts from MTA GTFS ZIP.
+ * Files are organized in subdirectories: mta-gtfs-static/{feedType}/
  * 
- * @param stopsPath File path to stops.txt
- * @param shapesPath File path to shapes.txt
- * @param stopTimesPath File path to stop_times.txt
+ * @param feedType Type of feed: "subway", "lirr", or "mnr"
  */
 export async function loadStaticGTFS(
-    stopsPath: string,
-    shapesPath: string,
-    stopTimesPath: string,
+    feedType: "subway" | "lirr" | "mnr",
 ): Promise<StaticGTFSData> {
     const fs = await import("fs/promises");
+    const path = await import("path");
+    
+    // Determine paths based on feed type
+    const baseDir = path.join("./mta-gtfs-static", feedType);
+    const stopsPath = path.join(baseDir, "stops.txt");
+    const shapesPath = path.join(baseDir, "shapes.txt");
+    const stopTimesPath = path.join(baseDir, "stop_times.txt");
+    const tripsPath = path.join(baseDir, "trips.txt");
+    const routesPath = path.join(baseDir, "routes.txt");
+    
+    // Get the appropriate ZIP URL
+    const zipUrl = GTFS_ZIP_URLS[feedType];
     
     // Ensure files exist (download/extract if needed)
-    await ensureGTFSFiles(stopsPath, shapesPath, stopTimesPath);
+    await ensureGTFSFiles(stopsPath, shapesPath, stopTimesPath, tripsPath, routesPath, zipUrl);
     
     // Read all files
-    const [stopsContent, shapesContent, stopTimesContent] = await Promise.all([
+    const [stopsContent, shapesContent, stopTimesContent, tripsContent, routesContent] = await Promise.all([
         fs.readFile(stopsPath, "utf-8"),
         fs.readFile(shapesPath, "utf-8"),
         fs.readFile(stopTimesPath, "utf-8"),
+        fs.readFile(tripsPath, "utf-8"),
+        fs.readFile(routesPath, "utf-8"),
     ]);
     
     return {
         stops: parseStops(stopsContent),
         shapes: parseShapes(shapesContent),
         stopTimes: parseStopTimes(stopTimesContent),
+        trips: parseTrips(tripsContent),
+        routes: parseRoutes(routesContent),
     };
 }
 

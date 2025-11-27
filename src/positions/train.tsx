@@ -6,6 +6,8 @@ import { Doc } from "../../convex/_generated/dataModel";
 import { toast } from "react-hot-toast";
 import { getIcon } from "../marker";
 import { PositionHandler, Position } from "./base";
+import type { DataSourceMessage } from "../../data-sources/dataSource";
+import type { AmtrakerMessagePayload } from "../../data-sources/messagePayloads";
 
 export type TrainStation = {
     name: string;
@@ -168,16 +170,17 @@ const TrainPopup = ({ position }: { position: TrainPosition }) => {
     );
 };
 
-export class TrainPositionHandler extends PositionHandler<TrainPosition> {
+export class TrainPositionHandler extends PositionHandler<TrainPosition, "Amtraker"> {
     constructor() {
         super({
             getMessageType: () => "Amtraker",
             getMarkerSVG: () => getTrainMarkerSVG(),
             renderPopup: (position) => <TrainPopup position={position} />,
-            parseMessage: (rawMsg: any): Map<string, TrainPosition> | null => {
+            parseMessage: (rawMsg: DataSourceMessage<"Amtraker">): Map<string, TrainPosition> | null => {
+                const payload: AmtrakerMessagePayload = rawMsg.msg;
                 const newTrainPositions = new Map<string, TrainPosition>();
-                for (const key of Object.keys(rawMsg.msg)) {
-                    const trainRoute = rawMsg.msg[key];
+                for (const key of Object.keys(payload)) {
+                    const trainRoute = payload[key];
                     for (const train of trainRoute) {
                         newTrainPositions.set(train.trainID, {
                             ...train,

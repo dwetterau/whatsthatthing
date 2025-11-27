@@ -2,6 +2,8 @@ import { Fragment } from "react";
 import { Marker, Popup } from "react-leaflet";
 import { getIcon } from "../marker";
 import { PositionHandler, Position } from "./base";
+import type { DataSourceMessage } from "../../data-sources/dataSource";
+import type { AISStreamMessagePayload } from "../../data-sources/messagePayloads";
 
 export type BoatPosition = Position & {
     shipName: string;
@@ -27,17 +29,18 @@ const getBoatMarkerSVG = () => {
 </svg>`)}`;
 };
 
-export class BoatPositionHandler extends PositionHandler<BoatPosition> {
+export class BoatPositionHandler extends PositionHandler<BoatPosition, "AISStream"> {
     constructor() {
         super({
             getMessageType: () => "AISStream",
             getMarkerSVG: () => getBoatMarkerSVG(),
             renderPopup: (position) => <div>{position.shipName}</div>,
-            parseMessage: (rawMsg: any): Map<string, BoatPosition> | null => {
+            parseMessage: (rawMsg: DataSourceMessage<"AISStream">): Map<string, BoatPosition> | null => {
+                const payload: AISStreamMessagePayload = rawMsg.msg;
                 // TODO: Get heading information too...
-                if (rawMsg.msg.MessageType === "PositionReport") {
+                if (payload.MessageType === "PositionReport") {
                     const { MMSI, ShipName, latitude, longitude } =
-                        rawMsg.msg.MetaData;
+                        payload.MetaData;
                     if (MMSI) {
                         const newBoatPositions = new Map<string, BoatPosition>();
                         newBoatPositions.set(MMSI, {
@@ -58,12 +61,12 @@ export class BoatPositionHandler extends PositionHandler<BoatPosition> {
     /**
      * Override handleMessage to handle incremental updates
      */
-    handleMessage(rawMsg: any): boolean {
+    handleMessage(rawMsg: DataSourceMessage<"AISStream"> | DataSourceMessage<any>): boolean {
         if (rawMsg.t !== this.config.getMessageType()) {
             return false;
         }
 
-        const newPositions = this.config.parseMessage(rawMsg);
+        const newPositions = this.config.parseMessage(rawMsg as DataSourceMessage<"AISStream">);
         if (newPositions !== null) {
             // Merge with existing positions instead of replacing
             const currentPositions = new Map(this.positions.entries());

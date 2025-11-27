@@ -4,9 +4,11 @@ import type { Bounds } from "../map";
 import { AirplanePositionHandler, AirplanePosition, AirplaneMarkers } from "./airplane";
 import { BoatPositionHandler, BoatPosition, BoatMarkers } from "./boat";
 import { TrainPositionHandler, TrainPosition, TrainMarkers } from "./train";
+import { MTAPositionHandler, MTAPosition, MTAMarkers } from "./mta";
+import type { DataSourceMessage } from "../../data-sources/dataSource";
 
-export { AirplaneMarkers, BoatMarkers, TrainMarkers };
-export type { AirplanePosition, BoatPosition, TrainPosition };
+export { AirplaneMarkers, BoatMarkers, TrainMarkers, MTAMarkers };
+export type { AirplanePosition, BoatPosition, TrainPosition, MTAPosition };
 
 export const usePositions = (
     currentBounds: Bounds | null,
@@ -15,6 +17,7 @@ export const usePositions = (
     const airplaneHandlerRef = useRef(new AirplanePositionHandler());
     const boatHandlerRef = useRef(new BoatPositionHandler());
     const trainHandlerRef = useRef(new TrainPositionHandler());
+    const mtaHandlerRef = useRef(new MTAPositionHandler());
 
     const [boatPositions, setBoatPositions] = useState<
         Map<string, BoatPosition>
@@ -25,6 +28,9 @@ export const usePositions = (
     const [trainPositions, setTrainPositions] = useState<
         Map<string, TrainPosition>
     >(new Map());
+    const [mtaPositions, setMTAPositions] = useState<
+        Map<string, MTAPosition>
+    >(new Map());
 
     useEffect(() => {
         if (currentBounds === null) {
@@ -33,39 +39,64 @@ export const usePositions = (
         // TODO: Set the domain somewhere centrally
         const websocket = new WebSocket("ws://localhost:5174");
         websocket.onmessage = (e) => {
-            const rawMsg = JSON.parse(e.data);
-            debug(`got ${rawMsg.t} message from server:`, rawMsg);
-            switch (rawMsg.t) {
-                case "START": {
-                    if (rawMsg.msg === "connection established") {
-                        websocket!.send(JSON.stringify(currentBounds));
-                    }
-                    break;
+            const parsed = JSON.parse(e.data);
+            debug(`got ${parsed.t} message from server:`, parsed);
+            
+            // Handle special control messages
+            if (parsed.t === "START") {
+                if (parsed.msg === "connection established") {
+                    websocket!.send(JSON.stringify(currentBounds));
                 }
-                case "Bounds": {
-                    onSetBounds(rawMsg.msg);
-                    break;
+                return;
+            }
+            if (parsed.t === "Bounds") {
+                onSetBounds(parsed.msg);
+                return;
+            }
+            
+            // Type guard: check if it's a valid DataSourceMessage and route to the correct handler
+            if (parsed.t && parsed.msg !== undefined) {
+                switch (parsed.t) {
+                    case "OpenSky": {
+                        const rawMsg = parsed as DataSourceMessage<"OpenSky">;
+                        const handled = airplaneHandlerRef.current.handleMessage(rawMsg);
+                        if (handled) {
+                            const positions = airplaneHandlerRef.current.getPositions();
+                            debug(`Setting ${positions.size} airplane positions`);
+                            setAirplanePositions(positions);
+                        }
+                        break;
+                    }
+                    case "AISStream": {
+                        const rawMsg = parsed as DataSourceMessage<"AISStream">;
+                        const handled = boatHandlerRef.current.handleMessage(rawMsg);
+                        if (handled) {
+                            setBoatPositions(boatHandlerRef.current.getPositions());
+                        }
+                        break;
+                    }
+                    case "Amtraker": {
+                        const rawMsg = parsed as DataSourceMessage<"Amtraker">;
+                        const handled = trainHandlerRef.current.handleMessage(rawMsg);
+                        if (handled) {
+                            setTrainPositions(trainHandlerRef.current.getPositions());
+                        }
+                        break;
+                    }
+                    case "MTA": {
+                        const rawMsg = parsed as DataSourceMessage<"MTA">;
+                        const handled = mtaHandlerRef.current.handleMessage(rawMsg);
+                        if (handled) {
+                            setMTAPositions(mtaHandlerRef.current.getPositions());
+                        }
+                        break;
+                    }
+                    default: {
+                        console.error("unknown message type", parsed.t, parsed);
+                    }
                 }
-                default: {
-                    // Try each handler to see if it can handle the message
-                    const airplaneHandled = airplaneHandlerRef.current.handleMessage(rawMsg);
-                    const boatHandled = boatHandlerRef.current.handleMessage(rawMsg);
-                    const trainHandled = trainHandlerRef.current.handleMessage(rawMsg);
-
-                    if (airplaneHandled) {
-                        setAirplanePositions(airplaneHandlerRef.current.getPositions());
-                    }
-                    if (boatHandled) {
-                        setBoatPositions(boatHandlerRef.current.getPositions());
-                    }
-                    if (trainHandled) {
-                        setTrainPositions(trainHandlerRef.current.getPositions());
-                    }
-
-                    if (!airplaneHandled && !boatHandled && !trainHandled) {
-                        console.error("unknown message", rawMsg);
-                    }
-                }
+            } else {
+                console.error("invalid message format", parsed);
             }
         };
         return () => {
@@ -82,6 +113,7 @@ export const usePositions = (
         boatPositions,
         airplanePositions,
         trainPositions,
+        mtaPositions,
     };
 };
 

@@ -7,7 +7,7 @@ import type {
     MessageType,
 } from "./dataSource";
 
-export class AmtrakerSource implements DataSource<"Amtraker", void> {
+export class AmtrakerSource implements DataSource {
     private config: DataSourceConfig;
     private broadcast: BroadcastFunction<"Amtraker">;
     private log: Logger;
