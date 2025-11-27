@@ -151,6 +151,7 @@ class RegionFetcher {
         this.dataSources.aisStream.stop();
         this.dataSources.openSky.stop();
         this.dataSources.amtraker.stop();
+        this.dataSources.mta.stop();
         this.destroyed = true;
     }
 }

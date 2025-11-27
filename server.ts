@@ -124,7 +124,8 @@ async function createServer() {
     if (!aisApiKey) {
         throw new Error("AISStream API Key not provided");
     }
-    setupWebsocketServer(aisApiKey!);
+
+    setupWebsocketServer(aisApiKey);
     console.log("server listening...");
     app.listen(5173, "0.0.0.0");
 }

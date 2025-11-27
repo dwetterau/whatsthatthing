@@ -6,5 +6,8 @@ websocket_server.js
 server.js
 dist/
 
+# Outputs from the MTA GTFS ZIP file
+mta-gtfs-static/
+
 # Env variables mostly for convex
 .env.local

@@ -1,4 +1,4 @@
-export type MessageType = "AISStream" | "OpenSky" | "Amtraker";
+export type MessageType = "AISStream" | "OpenSky" | "Amtraker" | "MTA";
 
 export interface DataSourceMessage<T extends MessageType> {
     t: T;
