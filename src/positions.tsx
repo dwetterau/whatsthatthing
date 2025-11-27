@@ -2,7 +2,7 @@ import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { Fragment, useEffect, useState } from "react";
 import { Marker, Popup } from "react-leaflet";
 import { api } from "../convex/_generated/api";
-import { Doc, Id } from "../convex/_generated/dataModel";
+import { Doc } from "../convex/_generated/dataModel";
 import { debug } from "./logger";
 import type { Bounds } from "./map";
 import { getIcon } from "./marker";

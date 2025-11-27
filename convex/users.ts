@@ -12,7 +12,7 @@ export const getLoggedInUserIdOrError = async (
     }
     const user = await ctx.db
         .query("users")
-        .withIndex("by_token", (q) =>
+        .withIndex("by_token", (q: any) =>
             q.eq("tokenIdentifier", identity.tokenIdentifier),
         )
         .unique();

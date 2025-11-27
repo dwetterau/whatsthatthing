@@ -30,7 +30,7 @@ const convertBounds = (
 };
 
 const InnerMap = ({
-    center,
+    center: _center,
     maxHeight,
 }: {
     center: { lat: number; lng: number };

@@ -89,7 +89,13 @@ async function createServer() {
         }
     });
 
-    app.use("*", async (req, res, next) => {
+    // Catch-all handler for SPA routing (Express 5 compatible)
+    app.use(async (req, res, next) => {
+        // Skip if this is an API route or already handled
+        if (req.path.startsWith("/api") || req.path.startsWith("/node_modules") || req.path.startsWith("/src")) {
+            return next();
+        }
+        
         const url = req.originalUrl;
 
         try {

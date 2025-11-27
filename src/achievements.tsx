@@ -50,8 +50,8 @@ export const Achievements = () => {
     }, [achievements, allAchievements]);
 
     useEffect(() => {
-        const closeOnEscape = (e) => {
-            if (e.keyCode === 27) {
+        const closeOnEscape = (e: KeyboardEvent) => {
+            if (e.key === "Escape") {
                 if (!isCollapsed) {
                     setIsCollapsed(true);
                 }

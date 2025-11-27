@@ -4,6 +4,7 @@ node_modules
 # Files that are outputted by TS
 websocket_server.js
 server.js
+dist/
 
 # Env variables mostly for convex
 .env.local
