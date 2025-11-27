@@ -11,7 +11,7 @@ import {
     BoatMarkers,
     TrainMarkers,
     usePositions,
-} from "./positions";
+} from "./positions/index";
 
 export type Bounds = {
     minLat: number;
