@@ -1,10 +1,13 @@
 import * as fs from "fs";
 import * as path from "path";
 import { fileURLToPath } from "url";
+import dotenv from "dotenv";
 import express from "express";
 import { createServer as createViteServer } from "vite";
 
 import { setupWebsocketServer } from "./websocket_server.js";
+
+dotenv.config({ path: ".env.local" });
 
 // This is running a vite server in middleware mode, mostly so that we can connect to 3rd party services
 // on the server.
@@ -107,7 +110,11 @@ async function createServer() {
             next(e);
         }
     });
-    setupWebsocketServer();
+    const aisApiKey = process.env.AISSTREAM_API_KEY;
+    if (!aisApiKey) {
+        throw new Error("AISStream API Key not provided");
+    }
+    setupWebsocketServer(aisApiKey!);
     console.log("server listening...");
     app.listen(5173, "0.0.0.0");
 }

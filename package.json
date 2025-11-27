@@ -4,7 +4,7 @@
     "version": "0.0.0",
     "type": "module",
     "scripts": {
-        "dev": "node server",
+        "dev": "tsx server.ts",
         "build:client": "tsc && vite build --outDir dist/client",
         "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
         "preview": "vite preview",
@@ -16,6 +16,7 @@
         "@esbuild-plugins/node-modules-polyfill": "^0.2.2",
         "@react-hook/resize-observer": "^1.2.6",
         "convex": "^1.0.2",
+        "dotenv": "^17.2.3",
         "express": "^4.18.2",
         "fs": "^0.0.1-security",
         "http": "^0.0.1-security",
@@ -42,6 +43,7 @@
         "eslint-plugin-react-hooks": "^4.6.0",
         "eslint-plugin-react-refresh": "^0.4.3",
         "prettier": "^3.0.0",
+        "tsx": "^4.20.6",
         "typescript": "^5.0.2",
         "vite": "^4.4.5"
     }

@@ -15,6 +15,58 @@ Ideas for types of "collectables" you might eventually be able to get:
 The idea is for it to work only where you currently are.
 The concept is for this to be a thing you do when you're sitting on a rooftop in Manhattan, and wondering: "What's that thing?".
 
+## Getting Started
+
+### Prerequisites
+
+- Node.js (v18 or higher recommended)
+- npm or yarn
+- A Convex account and project (for backend services)
+- An Auth0 account and application (for authentication)
+
+### Setup
+
+1. **Install dependencies:**
+   ```bash
+   npm install
+   ```
+
+2. **Set up environment variables:**
+   
+   Create a `.env` file in the project root with the following variables:
+   ```
+   VITE_CONVEX_URL=your_convex_deployment_url
+   VITE_AUTH0_DOMAIN=your_auth0_domain
+   VITE_AUTH0_CLIENT_ID=your_auth0_client_id
+   ```
+   
+   - **Convex URL**: Get this from your Convex dashboard after deploying your Convex functions
+   - **Auth0 Domain & Client ID**: Get these from your Auth0 application settings
+
+3. **Deploy Convex functions (if not already deployed):**
+   ```bash
+   npx convex dev
+   ```
+   
+   This will deploy your Convex functions and generate the necessary types. You can run this in a separate terminal if you want to watch for changes.
+
+4. **Start the development server:**
+   ```bash
+   npm run dev
+   ```
+
+5. **Open your browser:**
+   
+   The application will be available at `http://localhost:5173`
+
+### Development Scripts
+
+- `npm run dev` - Start the development server
+- `npm run build:client` - Build the client for production
+- `npm run lint` - Run ESLint
+- `npm run preview` - Preview the production build
+- `npm run prettier-format` - Format code with Prettier
+
 ## TODO:
 
 -   [x] Fetch Airplane data

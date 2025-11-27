@@ -1,4 +1,3 @@
-import { response } from "express";
 import WebSocket, { WebSocketServer } from "ws";
 
 type Bounds = {
@@ -31,8 +30,8 @@ class RegionFetcher {
         messageIndex: number;
         ws: WebSocket | null;
     }> = [];
-    private openSkyIntervalId;
-    private amtrakerIntervalId;
+    private openSkyIntervalId?: NodeJS.Timeout;
+    private amtrakerIntervalId?: NodeJS.Timeout;
 
     public destroyed: boolean = false;
 
@@ -40,20 +39,12 @@ class RegionFetcher {
         console.log("Fetcher: ", this.key, ...any);
     }
 
-    constructor(bounds: Bounds) {
+    constructor(bounds: Bounds, aisApiKey: string) {
         this.key = getKeyForBounds(bounds);
         this.bounds = bounds;
         this.refs = 0;
         this.lastAccessedTime = new Date();
         const { maxLat, minLat, maxLng, minLng } = bounds;
-
-        const apiKey = process.env.AISSTREAM_API_KEY;
-        if (!apiKey) {
-            console.error(
-                "AISStream API Key not provided. Not starting WebsocketServer",
-            );
-            return;
-        }
 
         const aisStreamConnection = new WebSocket(
             "wss://stream.aisstream.io/v0/stream",
@@ -62,7 +53,7 @@ class RegionFetcher {
             this.log("Opened connection to AISStream");
             aisStreamConnection!.send(
                 JSON.stringify({
-                    APIKey: apiKey,
+                    APIKey: aisApiKey,
                     BoundingBoxes: [
                         [
                             [maxLat, minLng],
@@ -105,30 +96,34 @@ class RegionFetcher {
 
         const fetchAmtraker = async () => {
             this.log("fetching Amtraker data");
-            const response = await fetch(
-                "https://api-v3.amtraker.com/v3/trains",
-            );
-            const data = await response.json();
+            try {
+                const response = await fetch(
+                    "https://api-v3.amtraker.com/v3/trains",
+                );
+                const data = await response.json();
 
-            const filteredData = {};
-            Object.keys(data).forEach((key) => {
-                // This is an array of each train.
-                const trainRoute = data[key].filter((train) => {
-                    return (
-                        train.lat >= minLat &&
-                        train.lat <= maxLat &&
-                        train.lon >= minLng &&
-                        train.lon <= maxLng
-                    );
+                const filteredData = {};
+                Object.keys(data).forEach((key) => {
+                    // This is an array of each train.
+                    const trainRoute = data[key].filter((train) => {
+                        return (
+                            train.lat >= minLat &&
+                            train.lat <= maxLat &&
+                            train.lon >= minLng &&
+                            train.lon <= maxLng
+                        );
+                    });
+                    if (trainRoute.length > 0) {
+                        filteredData[key] = trainRoute;
+                    }
                 });
-                if (trainRoute.length > 0) {
-                    filteredData[key] = trainRoute;
-                }
-            });
-            this.addAndBroadcastMessage({
-                t: "Amtraker",
-                msg: filteredData,
-            });
+                this.addAndBroadcastMessage({
+                    t: "Amtraker",
+                    msg: filteredData,
+                });
+            } catch (e) {
+                this.log("Error fetching Amtraker data", e);
+            }
         };
 
         fetchOpenSky();
@@ -207,23 +202,24 @@ class RegionFetcher {
     public destroy() {
         this.aisStreamConnection?.close();
         clearInterval(this.openSkyIntervalId);
+        clearInterval(this.amtrakerIntervalId);
         this.destroyed = true;
     }
 }
 
 const fetchersByBounds = new Map<string, RegionFetcher>();
 
-const registerBounds = (ws: WebSocket, bounds: Bounds) => {
+const registerBounds = (ws: WebSocket, bounds: Bounds, aisApiKey: string) => {
     const key = getKeyForBounds(bounds);
     console.log("registering key", key);
 
     if (!fetchersByBounds.has(key)) {
-        fetchersByBounds.set(key, new RegionFetcher(bounds));
+        fetchersByBounds.set(key, new RegionFetcher(bounds, aisApiKey));
     }
     let fetcher = fetchersByBounds.get(key)!;
     if (fetcher.destroyed) {
         console.log("resetting a previously-destroyed fetcher");
-        fetchersByBounds.set(key, new RegionFetcher(bounds));
+        fetchersByBounds.set(key, new RegionFetcher(bounds, aisApiKey));
         fetcher = fetchersByBounds.get(key)!;
     }
     fetcher.addRef(ws);
@@ -240,7 +236,7 @@ const allowedBounds: Bounds = {
     maxLng: -73.7,
 };
 
-export const setupWebsocketServer = () => {
+export const setupWebsocketServer = (aisApiKey: string) => {
     const socketServer = new WebSocketServer({ port: 5174 });
     socketServer.on("connection", (ws) => {
         console.log("client connected");
@@ -252,8 +248,8 @@ export const setupWebsocketServer = () => {
             console.log("client disconnected.", code, reason);
             disconnectFn?.();
         });
-        ws.on("error", () => {
-            console.log("websocket error");
+        ws.on("error", (e) => {
+            console.log("websocket error", e);
         });
         ws.on("message", (data) => {
             const rawMsg = JSON.parse(data.toString());
@@ -263,7 +259,7 @@ export const setupWebsocketServer = () => {
                 "using bounds",
                 allowedBounds,
             );
-            disconnectFn = registerBounds(ws, allowedBounds);
+            disconnectFn = registerBounds(ws, allowedBounds, aisApiKey);
             ws.send(JSON.stringify({ t: "Bounds", msg: allowedBounds }));
         });
     });
