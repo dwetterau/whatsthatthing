@@ -4,7 +4,7 @@ import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { Doc } from "../../convex/_generated/dataModel";
 import { toast } from "react-hot-toast";
-import { getIcon } from "../marker";
+import { getRotatableIcon } from "../marker";
 import { PositionHandler, Position } from "./base";
 import type { DataSourceMessage } from "../../data-sources/dataSource";
 import type { AmtrakerMessagePayload } from "../../data-sources/messagePayloads";
@@ -30,6 +30,7 @@ export type TrainPosition = Position & {
     lon: number;
     trainTimely: string;
     stations: Array<TrainStation>;
+    heading?: number; // Bearing in degrees (0 = North, 90 = East, 180 = South, 270 = West)
 };
 
 const computeStations = (
@@ -61,27 +62,45 @@ const computeStations = (
     };
 };
 
+/**
+ * Generate top-down Amtrak train SVG icon (static, no rotation)
+ * Icon points north (up) by default, rotation applied via CSS transform
+ * Acela-style stainless steel look
+ */
 const getTrainMarkerSVG = () => {
-    return `data:image/svg+xml;utf8,${encodeURIComponent(`<?xml version="1.0" encoding="iso-8859-1"?>
-<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
-<svg fill="#18567d" height="40px" width="40px" version="1.1" id="Capa_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" 
-	 viewBox="0 0 288.618 288.618" xml:space="preserve">
-<g>
-	<path d="M287.985,215.049l-9.848-24.938c-1.365-3.458-4.706-5.73-8.424-5.73h-33.89c4.387,0,8.465-2.258,10.794-5.976
-		c16.747-26.736,16.747-60.691,0-87.428c-2.329-3.719-6.407-5.977-10.795-5.977h-11.347V53.66h5.851
-		c3.616,0,6.548-2.932,6.548-6.548V39.94c0-3.616-2.932-6.548-6.548-6.548h-48.184c-3.616,0-6.548,2.932-6.548,6.548v7.172
-		c0,3.616,2.932,6.548,6.548,6.548h5.851v31.342h-38.869V29.45c0-5.003-4.055-9.058-9.057-9.058H9.057
-		C4.055,20.392,0,24.447,0,29.45v13.875c0,5.002,4.055,9.057,9.057,9.057h10.101v132H9.057c-5.002,0-9.057,4.055-9.057,9.057v24.938
-		c0,5.003,4.055,9.058,9.057,9.058h19.682v-0.001c0-30.765,25.028-55.793,55.793-55.793c30.765,0,55.794,25.028,55.794,55.793v0.001
-		h26.992c5.183-17.839,21.663-30.919,41.151-30.919c19.488,0,35.969,13.08,41.152,30.919h29.939c2.999,0,5.803-1.483,7.489-3.963
-		C288.736,220.991,289.086,217.838,287.985,215.049z M116.777,136.744c0,4.705-3.814,8.52-8.52,8.52H57.782
-		c-4.705,0-8.52-3.814-8.52-8.52V94.139c0-18.645,15.113-33.758,33.757-33.758c18.645,0,33.758,15.113,33.758,33.758V136.744z"/>
-	<path d="M208.469,210.514c-15.34,0-27.877,11.971-28.796,27.079c-5.911,0-49.787,0-55.624,0c0.833-3.248,1.276-6.653,1.276-10.161
-		c0-22.529-18.264-40.793-40.794-40.793c-22.529,0-40.793,18.264-40.793,40.793c0,22.53,18.264,40.794,40.793,40.794
-		c13.033,0,24.63-6.119,32.098-15.633c23.751,0,41.245,0,66.195,0c4.796,9.283,14.476,15.633,25.645,15.633
-		c15.938,0,28.856-12.919,28.856-28.856C237.325,223.433,224.406,210.514,208.469,210.514z"/>
-</g>
-</svg>`)}`;
+    // Top-down Acela-style train - sleek stainless steel rectangle with pointed nose
+    const svg = `<svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+            <filter id="trainShadow" x="-20%" y="-20%" width="140%" height="140%">
+                <feDropShadow dx="1" dy="1" stdDeviation="1" flood-opacity="0.3"/>
+            </filter>
+            <linearGradient id="steelBody" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" style="stop-color:#94a3b8"/>
+                <stop offset="30%" style="stop-color:#e2e8f0"/>
+                <stop offset="50%" style="stop-color:#f8fafc"/>
+                <stop offset="70%" style="stop-color:#e2e8f0"/>
+                <stop offset="100%" style="stop-color:#94a3b8"/>
+            </linearGradient>
+        </defs>
+        <!-- Main body - stainless steel rectangle with aerodynamic nose -->
+        <path d="M 20 4 L 26 10 L 26 34 L 14 34 L 14 10 Z" 
+              fill="url(#steelBody)" stroke="#64748b" stroke-width="1" filter="url(#trainShadow)"/>
+        <!-- Nose point accent -->
+        <path d="M 20 4 L 24 9 L 16 9 Z" fill="#cbd5e1" stroke="#94a3b8" stroke-width="0.5"/>
+        <!-- Windshield -->
+        <rect x="17" y="10" width="6" height="3" rx="0.5" fill="#1e3a8a"/>
+        <!-- Red Amtrak stripe -->
+        <rect x="14" y="14" width="12" height="1.5" fill="#dc2626"/>
+        <!-- Windows (dark blue tint) -->
+        <rect x="15" y="17" width="10" height="1.5" rx="0.3" fill="#334155"/>
+        <rect x="15" y="20" width="10" height="1.5" rx="0.3" fill="#334155"/>
+        <rect x="15" y="23" width="10" height="1.5" rx="0.3" fill="#334155"/>
+        <rect x="15" y="26" width="10" height="1.5" rx="0.3" fill="#334155"/>
+        <!-- Rear -->
+        <rect x="15" y="30" width="10" height="3" rx="0.5" fill="#64748b"/>
+    </svg>`;
+    
+    return svg;
 };
 
 const TrainPopup = ({ position }: { position: TrainPosition }) => {
@@ -204,12 +223,12 @@ export const TrainMarkers = ({
         <Fragment>
             {Array.from(trainPositions.entries()).map(([_, position]) => {
                 const { lat, lon, trainID } = position;
-                return (
-                    <Marker
-                        key={trainID}
-                        position={[lat, lon]}
-                        icon={getIcon(getTrainMarkerSVG())}
-                    >
+                    return (
+                        <Marker
+                            key={trainID}
+                            position={[lat, lon]}
+                            icon={getRotatableIcon(getTrainMarkerSVG(), position.heading)}
+                        >
                         <Popup>
                             <TrainPopup position={position} />
                         </Popup>

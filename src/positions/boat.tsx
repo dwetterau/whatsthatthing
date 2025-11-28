@@ -1,6 +1,6 @@
 import { Fragment } from "react";
 import { Marker, Popup } from "react-leaflet";
-import { getIcon } from "../marker";
+import { getRotatableIcon } from "../marker";
 import { PositionHandler, Position } from "./base";
 import type { DataSourceMessage } from "../../data-sources/dataSource";
 import type { AISStreamMessagePayload } from "../../data-sources/messagePayloads";
@@ -8,32 +8,49 @@ import type { AISStreamMessagePayload } from "../../data-sources/messagePayloads
 export type BoatPosition = Position & {
     shipName: string;
     time: Date;
+    heading?: number; // Bearing in degrees (0 = North, 90 = East, 180 = South, 270 = West)
 };
 
 const getBoatMarkerSVG = () => {
-    return `data:image/svg+xml;utf8,${encodeURIComponent(`<?xml version="1.0" encoding="iso-8859-1"?>
-<svg fill="#7a0dd4" height="40px" width="40px" version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" 
-	 viewBox="0 0 488.027 488.027" xml:space="preserve">
-<g>
-	<g>
-		<path d="M486.138,299.514L486.138,299.514c-2.2-3.1-6-4.7-9.8-4c-28,4.7-53.7,10-78.6,15c-50.8,10.4-95.1,19.4-143.4,20.8v-46.3
-			h112.1c4,0,7.5-2.3,9.1-6c1.6-3.6,0.9-7.9-1.8-10.8l-119.5-131v-88.1c0-5.5-4.5-10-10-10s-10,4.5-10,10v26.9l-150.9,192.7
-			c-2.4,3-2.8,7.1-1.1,10.5c1.7,3.4,5.2,5.6,9,5.6h143v46.3c-102.2-2.5-189-35-189.9-35.3c-1.1-0.4-2.3-0.7-3.5-0.7h-30.8
-			c-3.6,0-6.9,1.9-8.7,5s-1.8,6.9,0.1,10l72.4,123.2c1.6,2.8,4.5,4.6,7.6,4.9c4.5,0.4,110.2,10.7,165.4,10.7
-			c54.4,0,160.9-10.3,165.4-10.7c3.3-0.3,6.2-2.3,7.8-5.2l66.7-123.2C488.638,306.714,488.438,302.613,486.138,299.514z
-			 M254.438,166.913l89.4,98h-89.4V166.913z M111.938,264.914L111.938,264.914l122.5-156.4v156.4H111.938z M405.038,419.013
-			L405.038,419.013c-22.5,2.1-111.5,10.1-158.2,10.1c-47.5,0-136.3-8.1-158.4-10.1l-61-103.7h11.7c13.9,5.1,103.4,36.1,207.7,36.1
-			h0.1c53.2-0.6,102.6-10.7,154.8-21.4c18.5-3.8,37.5-7.7,57.5-11.3L405.038,419.013z"/>
-	</g>
-</g>
-</svg>`)}`;
+    // Top-down ship / vessel - clean ship silhouette from above
+    const svg = `<svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+            <filter id="boatShadow" x="-20%" y="-20%" width="140%" height="140%">
+                <feDropShadow dx="1" dy="1" stdDeviation="1" flood-opacity="0.3"/>
+            </filter>
+            <linearGradient id="hullGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" style="stop-color:#1e3a8a"/>
+                <stop offset="50%" style="stop-color:#3b82f6"/>
+                <stop offset="100%" style="stop-color:#1e3a8a"/>
+            </linearGradient>
+        </defs>
+        <!-- Hull outline (ship body) - pointed bow, rounded stern -->
+        <path d="M 20 4 
+                 L 28 14 L 28 30 C 28 33, 24 36, 20 36 
+                 C 16 36, 12 33, 12 30 L 12 14 Z" 
+              fill="url(#hullGrad)" stroke="#1e40af" stroke-width="1" filter="url(#boatShadow)"/>
+        <!-- Deck (lighter blue) -->
+        <path d="M 20 8 L 25 15 L 25 29 C 25 31, 23 33, 20 33 
+                 C 17 33, 15 31, 15 29 L 15 15 Z" 
+              fill="#60a5fa"/>
+        <!-- Bow accent -->
+        <path d="M 20 5 L 24 12 L 20 10 L 16 12 Z" fill="#1e40af"/>
+        <!-- Bridge/cabin (white rectangle) -->
+        <rect x="16" y="17" width="8" height="6" rx="1" fill="#f1f5f9" stroke="#64748b" stroke-width="0.5"/>
+        <!-- Bridge windows -->
+        <rect x="17" y="18.5" width="6" height="2" rx="0.3" fill="#1e3a8a"/>
+        <!-- Stern/rear deck -->
+        <ellipse cx="20" cy="30" rx="4" ry="2" fill="#475569"/>
+    </svg>`;
+    
+    return svg;
 };
 
 export class BoatPositionHandler extends PositionHandler<BoatPosition, "AISStream"> {
     constructor() {
         super({
             getMessageType: () => "AISStream",
-            getMarkerSVG: () => getBoatMarkerSVG(),
+            getMarkerSVG: (_position) => getBoatMarkerSVG(),
             renderPopup: (position) => <div>{position.shipName}</div>,
             parseMessage: (rawMsg: DataSourceMessage<"AISStream">): Map<string, BoatPosition> | null => {
                 const payload: AISStreamMessagePayload = rawMsg.msg;
@@ -43,8 +60,9 @@ export class BoatPositionHandler extends PositionHandler<BoatPosition, "AISStrea
                         payload.MetaData;
                     if (MMSI) {
                         const newBoatPositions = new Map<string, BoatPosition>();
-                        newBoatPositions.set(MMSI, {
-                            uniqueKey: MMSI,
+                        const uniqueKey = String(MMSI);
+                        newBoatPositions.set(uniqueKey, {
+                            uniqueKey,
                             shipName: ShipName,
                             lat: latitude,
                             lng: longitude,
@@ -94,7 +112,7 @@ export const BoatMarkers = ({
                         <Marker
                             key={uniqueKey}
                             position={[lat, lng]}
-                            icon={getIcon(getBoatMarkerSVG())}
+                            icon={getRotatableIcon(getBoatMarkerSVG(), position.heading)}
                         >
                             <Popup>
                                 <div>{shipName}</div>
